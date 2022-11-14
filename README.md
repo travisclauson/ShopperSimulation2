@@ -1,2 +1,2 @@
-# ShopperSimulation2
-This is code for a Supermarket Shoppping Simulation where I code navigation behavior and norms into an autonomous agent.
+# Shopper Simulation 2
+This is a coding assignment for 'CS-139 Ethics of AI' at Tufts University taught by Professor Matthias Scheutz. This librray is a Supermarket Shoppping Simulation developed by the Tufts Computer Science Department. It allows for keyboard input or for a na autonomous agent. My partner Lidi Yafei and I wrote 'Agent.java' which is an autonomous agent that is capable of navigating its environoment and shopping for its list of items, all while following most basic shopping norms.

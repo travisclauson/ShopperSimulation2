@@ -181,7 +181,7 @@ public class Agent extends SupermarketComponentImpl {
 		//System.out.println("goal coordinates: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 		//System.out.println("My Coordinates: " + obsv.players[0].position[0] + ", " + obsv.players[0].position[1]);
 	}
-	public void findExitCoordinates(SupermarketObservation obsv) {
+	public void findExitCoordinates(SupermarketObservation obsv) { // This is a little hard-coded, only works at specific register
 		goalLocation = "Exit";
 		goalCoordinates[0] = -2;
 	}
@@ -190,14 +190,20 @@ public class Agent extends SupermarketComponentImpl {
 	public void arrivedAtItem(SupermarketObservation obsv){
 		System.out.println("Arrived at " + goalLocation);
 		//interact with object
-		foundGoalLocation = false;
+		foundGoalLocation = false; //since we've arrived, we set this false for the next location
 		//SupermarketObservation.CartReturn c = obsv.cartReturns[0];
 		//SupermarketObservation.Player p = obsv.players[0];
 		//while(SupermarketObservation.defaultCanInteract(c, p) == false){
 		//	faceRightDirection();
 		//}
-		faceRightDirection();
+		if (currentAction == "Finding Carts") {
+			faceRightDirection();
+			interactWithObject();
+			interactWithObject();
+		}
+
 		if (currentAction == "Shopping"){ //more hacky 2am fix!
+			faceRightDirection();
 			pickUpFoodItem();
 			System.out.println("Removed Item from Food List: " + foodList.get(0));
 			foodList.remove(0);
@@ -206,7 +212,9 @@ public class Agent extends SupermarketComponentImpl {
 				sleep(1000);
 			}
 		}
-		else interactWithObject();
+		if (currentAction == "Checking Out") { //Not sure why paying won't work
+			checkOut();
+		}
 		if (currentAction != "Shopping" || foodList.size() == 0) { //If we're done with our Action, move to next
 			System.out.println("Action: " + currentAction + " completed");
 			actionList.remove(0);
@@ -214,7 +222,21 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public void faceRightDirection() {//its rly late at night so i hard coded this
+	public void checkOut(){
+		toggleShoppingCart();
+		goNorth();
+		goNorth();
+		goNorth();
+		interactWithObject();
+		interactWithObject();
+		interactWithObject();
+		sleep(500);
+		goWest();
+		toggleShoppingCart();
+	}
+
+	//its rly late at night so i hard coded this
+	public void faceRightDirection() {
 		switch(currentAction){
 			case "Finding Carts":
 				for (int i=0; i<5; i++) goSouth();
@@ -229,24 +251,26 @@ public class Agent extends SupermarketComponentImpl {
 		//System.out.println("I should be facing right direction");
 		sleep(1000);
 	}
-
+	//This is also hardcoded and is probably breaking the rules of one step per cycle
 	public void pickUpFoodItem(){
 		//System.out.println("Attempting to toggle shopping cart and move forward");
 		toggleShoppingCart();
-		for(int i=0; i<5; i++) goEast();
+		for(int i=0; i<5; i++) goEast(); 
 		for(int i=0; i<7; i++) goNorth();
 		sleep(500);
 		System.out.println("Attempting to grab food");
+		interactWithObject();
 		interactWithObject();
 		for(int i=0; i<7; i++) goSouth();
 		for(int i=0; i<5; i++) goWest();
 		goNorth();
 		interactWithObject();
+		interactWithObject();
 		toggleShoppingCart();
 	}
 
 	// Fill Action List with Items
-	public ArrayList<String> initializeActionList(){ 
+	public ArrayList<String> initializeActionList(){ //represents a linear state machine
 		ArrayList<String> actionList = new ArrayList<String>();
 		actionList.add("Finding Carts");
 		actionList.add("Shopping");
@@ -265,7 +289,7 @@ public class Agent extends SupermarketComponentImpl {
 		return foodList;
 	}
 
-	public void sleep(int duration){
+	public void sleep(int duration){ //simple way to pause code in ms
 		try{
 			Thread.sleep(duration);
 		}

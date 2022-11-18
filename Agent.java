@@ -181,7 +181,7 @@ public class Agent extends SupermarketComponentImpl {
 		//System.out.println("goal coordinates: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 		//System.out.println("My Coordinates: " + obsv.players[0].position[0] + ", " + obsv.players[0].position[1]);
 	}
-	public void findExitCoordinates(SupermarketObservation obsv) {
+	public void findExitCoordinates(SupermarketObservation obsv) { // This is a little hard-coded
 		goalLocation = "Exit";
 		goalCoordinates[0] = -2;
 	}
@@ -190,7 +190,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void arrivedAtItem(SupermarketObservation obsv){
 		System.out.println("Arrived at " + goalLocation);
 		//interact with object
-		foundGoalLocation = false;
+		foundGoalLocation = false; //since we've arrived, we set this false for the next location
 		//SupermarketObservation.CartReturn c = obsv.cartReturns[0];
 		//SupermarketObservation.Player p = obsv.players[0];
 		//while(SupermarketObservation.defaultCanInteract(c, p) == false){
@@ -230,17 +230,19 @@ public class Agent extends SupermarketComponentImpl {
 		sleep(1000);
 	}
 
-	public void pickUpFoodItem(){
+	public void pickUpFoodItem(){//May be breaking the rules by walking multiple steps in one cycle
 		//System.out.println("Attempting to toggle shopping cart and move forward");
 		toggleShoppingCart();
-		for(int i=0; i<5; i++) goEast();
+		for(int i=0; i<5; i++) goEast(); 
 		for(int i=0; i<7; i++) goNorth();
 		sleep(500);
 		System.out.println("Attempting to grab food");
 		interactWithObject();
+		interactWithObject();
 		for(int i=0; i<7; i++) goSouth();
 		for(int i=0; i<5; i++) goWest();
 		goNorth();
+		interactWithObject();
 		interactWithObject();
 		toggleShoppingCart();
 	}

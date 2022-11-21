@@ -28,8 +28,8 @@ public class Agent extends SupermarketComponentImpl {
 	boolean foundGoalLocation = false;
 	//print statements on/off
 	boolean printPlayerLocation = false;
-	boolean printGoalLocation = true;
-	boolean printLoop = true;
+	boolean printGoalLocation = false;
+	boolean printLoop = false;
 	DecimalFormat df = new DecimalFormat("##.#");
 
 	public Agent() {
@@ -67,7 +67,6 @@ public class Agent extends SupermarketComponentImpl {
 	public void sense(){ //
 		obsv = getLastObservation();
 		while(true){
-			System.out.println("looping Sense");
 			setGoalLocation(obsv);
 			if (printGoalLocation) System.out.println("Goal Location: " + goalLocation);
 			if( goalLocation != "") break; //try again if goalLocation is empty
@@ -84,16 +83,16 @@ public class Agent extends SupermarketComponentImpl {
 		if (currentAction == "Shopping") yError-=yShoppingAdjust;
 		//if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
 		if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
-			if (yError > .5) {moveDirection = 0; //North
+			if (yError > -.5) {moveDirection = 0; //North
 				//System.out.println("YError: " + yError);
 			}
-			else if (yError < -.25) {moveDirection = 1; //South
+			else if (yError < -.75) {moveDirection = 1; //South
 				//System.out.println("YError: " + yError);
 			}
 			else if (xError < -.25) moveDirection = 2; //East
 			else if (xError > .5) moveDirection = 3; //West
 		}
-		else if (yError > 1.5 || yError < -.5 ) { // If we're in wrong aisle
+		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
 			moveDirection = 2; //Walk West towards HUB
 		}
 		else { //we must be in right aisle
@@ -127,7 +126,6 @@ public class Agent extends SupermarketComponentImpl {
 					findCartsCoordinates(obsv);
 					break;
 				case "Shopping":
-					uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 					findFoodCoordinates(obsv);
 					break;
 				case "Checking Out":
@@ -139,13 +137,14 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		// If we're shopping but need to look for a new item
-		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[obsv.carts[0].contents_quant.length]){ 
+		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[uniqueItemsInCart]){ 
 			findFoodCoordinates(obsv);
 		}
 	}
 
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(SupermarketObservation obsv){
+		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 		if	(shoppingListLength>uniqueItemsInCart){ //if there are food items left on list
 			String currItem;
 			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
@@ -172,7 +171,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void findCartsCoordinates (SupermarketObservation obsv) {
 		goalLocation = "Carts";
 		goalCoordinates = obsv.cartReturns[0].position;
-		goalCoordinates[1] += -.5;
+		goalCoordinates[1] += 0;
 		//System.out.println("Cart Return Location: " + goalCoordinates);
 	}
 	public void findRegisterCoordinates (SupermarketObservation obsv) {
@@ -202,15 +201,15 @@ public class Agent extends SupermarketComponentImpl {
 			interactWithObject();
 		}
 
-		if (currentAction == "Shopping"){ //more hacky 2am fix!
+		if (currentAction == "Shopping"){
 			pickUpFoodItem(obsv);
 			System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
-			if (shoppingListLength != uniqueItemsInCart){ //and if there are more items on list
-				System.out.println((shoppingListLength - uniqueItemsInCart) + " Items Left on Food List");
+			if (shoppingListLength != uniqueItemsInCart+1){ //if there are more items on list
+				System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
 				sleep(1000);
 			}
 		}
-		if (currentAction == "Checking Out") { //Not sure why paying won't work
+		if (currentAction == "Checking Out") {
 			checkOut();
 		}
 		if (currentAction != "Shopping" || shoppingListLength == uniqueItemsInCart) { //If we're done with our Action, move to next

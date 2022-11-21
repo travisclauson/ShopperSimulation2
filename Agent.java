@@ -145,15 +145,14 @@ public class Agent extends SupermarketComponentImpl {
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(SupermarketObservation obsv){
 		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
-		if	(shoppingListLength>uniqueItemsInCart){ //if there are food items left on list
+		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			String currItem;
 			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
-			if  (goalLocation != desiredFoodItem){ //If we're onto a new item, find coordinates
+			if  (!goalLocation.equals(desiredFoodItem)){ //If we're onto a new item, find coordinates
 				goalLocation = desiredFoodItem;
 				System.out.println("Searching for New Food Item: " + desiredFoodItem);
 				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
 					currItem = obsv.shelves[i].food_name;
-					//System.out.println(currItem); //prints all items on shelves
 					if (currItem.equals(goalLocation)) {
 						goalCoordinates = obsv.shelves[i].position;
 						//System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
@@ -164,6 +163,7 @@ public class Agent extends SupermarketComponentImpl {
 
 		}
 		else {
+
 			actionList.remove(0);
 		}
 	}
@@ -200,8 +200,7 @@ public class Agent extends SupermarketComponentImpl {
 			interactWithObject();
 			interactWithObject();
 		}
-
-		if (currentAction == "Shopping"){
+		if (currentAction == "Shopping"){ //Hacky fix
 			pickUpFoodItem(obsv);
 			System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
 			if (shoppingListLength != uniqueItemsInCart+1){ //if there are more items on list
@@ -209,13 +208,12 @@ public class Agent extends SupermarketComponentImpl {
 				sleep(1000);
 			}
 		}
+		if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart) { //If we're done with our Action, move to next
+			System.out.println("Action: " + currentAction + " completed");
+			sleep(1000);
+		}
 		if (currentAction == "Checking Out") {
 			checkOut();
-		}
-		if (currentAction != "Shopping" || shoppingListLength == uniqueItemsInCart) { //If we're done with our Action, move to next
-			System.out.println("Action: " + currentAction + " completed");
-			actionList.remove(0);
-			sleep(1000);
 		}
 	}
 

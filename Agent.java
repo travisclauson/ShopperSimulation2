@@ -53,7 +53,7 @@ public class Agent extends SupermarketComponentImpl {
 	@Override
 	protected void executionLoop() {
 		if (!setupDone) setup();
-		if (printLoop) System.out.println("Loop: " + Integer.toString(count)); //Print loop number if set above
+		//if (printLoop) System.out.println("Loop: " + Integer.toString(count)); //Print loop number if set above
 		sense(); //sense the situtation, set the goal
 		decide(obsv); //detirmines next movement direction
 		act(obsv); //moves
@@ -171,7 +171,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void findCartsCoordinates (SupermarketObservation obsv) {
 		goalLocation = "Carts";
 		goalCoordinates = obsv.cartReturns[0].position;
-		goalCoordinates[1] += -.75;
+		goalCoordinates[1] += -.5;
 		//System.out.println("Cart Return Location: " + goalCoordinates);
 	}
 	public void findRegisterCoordinates (SupermarketObservation obsv) {
@@ -197,14 +197,13 @@ public class Agent extends SupermarketComponentImpl {
 		//	faceRightDirection();
 		//}
 		if (currentAction == "Finding Carts") {
-			faceRightDirection();
+			goSouth();
 			interactWithObject();
 			interactWithObject();
 		}
 
 		if (currentAction == "Shopping"){ //more hacky 2am fix!
-			faceRightDirection();
-			pickUpFoodItem();
+			pickUpFoodItem(obsv);
 			System.out.println("Removed Item from Food List: " + foodList.get(0));
 			foodList.remove(0);
 			if (foodList.size() != 0){ //and if there are more items on list
@@ -252,18 +251,17 @@ public class Agent extends SupermarketComponentImpl {
 		sleep(1000);
 	}
 	//This is also hardcoded and is probably breaking the rules of one step per cycle
-	public void pickUpFoodItem(){
+	public void pickUpFoodItem(SupermarketObservation obsv){
 		//System.out.println("Attempting to toggle shopping cart and move forward");
-		toggleShoppingCart();
-		for(int i=0; i<5; i++) goEast(); 
+		toggleShoppingCart(); 
 		for(int i=0; i<7; i++) goNorth();
 		sleep(500);
 		System.out.println("Attempting to grab food");
 		interactWithObject();
 		interactWithObject();
 		for(int i=0; i<7; i++) goSouth();
-		for(int i=0; i<5; i++) goWest();
-		goNorth();
+		moveDirection = obsv.carts[0].direction;
+		act(obsv);
 		interactWithObject();
 		interactWithObject();
 		toggleShoppingCart();

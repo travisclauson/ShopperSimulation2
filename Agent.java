@@ -22,13 +22,14 @@ public class Agent extends SupermarketComponentImpl {
 	String goalLocation = "";
 	String currentAction = "";
 	boolean setupDone = false;
-	ArrayList<String> foodList;
+	int shoppingListLength = 0;
+	int uniqueItemsInCart = 0;
 	ArrayList<String> actionList;
 	boolean foundGoalLocation = false;
 	//print statements on/off
 	boolean printPlayerLocation = false;
-	boolean printGoalLocation = false;
-	boolean printLoop = false;
+	boolean printGoalLocation = true;
+	boolean printLoop = true;
 	DecimalFormat df = new DecimalFormat("##.#");
 
 	public Agent() {
@@ -38,14 +39,16 @@ public class Agent extends SupermarketComponentImpl {
 
 	//intializes Food and action Lists
 	public void setup(){ 
-		foodList = initializeFoodList();
-		System.out.println(foodList);
+		obsv = getLastObservation();
+		System.out.println("Shopping List:");
+		shoppingListLength = obsv.players[0].shopping_list.length;
+		for(int i=0; i<shoppingListLength; i++){
+			System.out.println(
+			String.valueOf(obsv.players[0].list_quant[i]) + " - " + 
+			obsv.players[0].shopping_list[i]);
+		}
 		actionList = initializeActionList();
 		System.out.println(actionList);
-		//System.out.println(foodList.get(0));
-		//Scanner scan = new Scanner(System.in);
-		//System.out.println("Enter a location: ");
-		//goalLocation = scan.next();
 		setupDone = true;
 		System.out.println("Setup Done");
 	}
@@ -53,7 +56,7 @@ public class Agent extends SupermarketComponentImpl {
 	@Override
 	protected void executionLoop() {
 		if (!setupDone) setup();
-		//if (printLoop) System.out.println("Loop: " + Integer.toString(count)); //Print loop number if set above
+		if (printLoop) System.out.println("Loop: " + Integer.toString(count)); //Print loop number if set above
 		sense(); //sense the situtation, set the goal
 		decide(obsv); //detirmines next movement direction
 		act(obsv); //moves
@@ -64,6 +67,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void sense(){ //
 		obsv = getLastObservation();
 		while(true){
+			System.out.println("looping Sense");
 			setGoalLocation(obsv);
 			if (printGoalLocation) System.out.println("Goal Location: " + goalLocation);
 			if( goalLocation != "") break; //try again if goalLocation is empty
@@ -123,6 +127,7 @@ public class Agent extends SupermarketComponentImpl {
 					findCartsCoordinates(obsv);
 					break;
 				case "Shopping":
+					uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 					findFoodCoordinates(obsv);
 					break;
 				case "Checking Out":
@@ -134,16 +139,16 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		// If we're shopping but need to look for a new item
-		else if (currentAction == "Shopping" && goalLocation != foodList.get(0)){ 
+		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[obsv.carts[0].contents_quant.length]){ 
 			findFoodCoordinates(obsv);
 		}
 	}
 
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(SupermarketObservation obsv){
-		if	(foodList.size()>0){ //if there are food items left on list
+		if	(shoppingListLength>uniqueItemsInCart){ //if there are food items left on list
 			String currItem;
-			String desiredFoodItem =  foodList.get(0);
+			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
 			if  (goalLocation != desiredFoodItem){ //If we're onto a new item, find coordinates
 				goalLocation = desiredFoodItem;
 				System.out.println("Searching for New Food Item: " + desiredFoodItem);
@@ -155,10 +160,6 @@ public class Agent extends SupermarketComponentImpl {
 						//System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						foundGoalLocation = true;
 					}
-				}
-				if (!foundGoalLocation) {
-					System.out.println("Could not find " + goalLocation);
-					foodList.remove(0);
 				}
 			}
 
@@ -194,7 +195,6 @@ public class Agent extends SupermarketComponentImpl {
 		//SupermarketObservation.CartReturn c = obsv.cartReturns[0];
 		//SupermarketObservation.Player p = obsv.players[0];
 		//while(SupermarketObservation.defaultCanInteract(c, p) == false){
-		//	faceRightDirection();
 		//}
 		if (currentAction == "Finding Carts") {
 			goSouth();
@@ -204,17 +204,16 @@ public class Agent extends SupermarketComponentImpl {
 
 		if (currentAction == "Shopping"){ //more hacky 2am fix!
 			pickUpFoodItem(obsv);
-			System.out.println("Removed Item from Food List: " + foodList.get(0));
-			foodList.remove(0);
-			if (foodList.size() != 0){ //and if there are more items on list
-				System.out.println(foodList.size() + " Items Left on Food List");
+			System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
+			if (shoppingListLength != uniqueItemsInCart){ //and if there are more items on list
+				System.out.println((shoppingListLength - uniqueItemsInCart) + " Items Left on Food List");
 				sleep(1000);
 			}
 		}
 		if (currentAction == "Checking Out") { //Not sure why paying won't work
 			checkOut();
 		}
-		if (currentAction != "Shopping" || foodList.size() == 0) { //If we're done with our Action, move to next
+		if (currentAction != "Shopping" || shoppingListLength == uniqueItemsInCart) { //If we're done with our Action, move to next
 			System.out.println("Action: " + currentAction + " completed");
 			actionList.remove(0);
 			sleep(1000);
@@ -234,22 +233,6 @@ public class Agent extends SupermarketComponentImpl {
 		toggleShoppingCart();
 	}
 
-	//its rly late at night so i hard coded this
-	public void faceRightDirection() {
-		switch(currentAction){
-			case "Finding Carts":
-				for (int i=0; i<5; i++) goSouth();
-				break;
-			case "Shopping":
-				for (int i=0; i<5; i++) goNorth();
-				break;
-			case "Checking Out" :
-				goNorth();
-				break;
-		}
-		//System.out.println("I should be facing right direction");
-		sleep(1000);
-	}
 	//This is also hardcoded and is probably breaking the rules of one step per cycle
 	public void pickUpFoodItem(SupermarketObservation obsv){
 		//System.out.println("Attempting to toggle shopping cart and move forward");
@@ -268,7 +251,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	// Fill Action List with Items
-	public ArrayList<String> initializeActionList(){ //represents a linear state machine
+	public ArrayList<String> initializeActionList(){
 		ArrayList<String> actionList = new ArrayList<String>();
 		actionList.add("Finding Carts");
 		actionList.add("Shopping");
@@ -276,18 +259,9 @@ public class Agent extends SupermarketComponentImpl {
 		actionList.add("Exiting");
 		return actionList;
 	}
-	
-	// Fill Food list with Items
-	public ArrayList<String> initializeFoodList(){
-		ArrayList<String> foodList = new ArrayList<String>();
-		foodList.add("milk");
-		foodList.add("banana");
-		foodList.add("steak");
-		foodList.add("cheese wheel");
-		return foodList;
-	}
 
-	public void sleep(int duration){ //simple way to pause code in ms
+	//Custom Sleep function in ms
+	public void sleep(int duration){
 		try{
 			Thread.sleep(duration);
 		}

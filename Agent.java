@@ -34,7 +34,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	//print statements on/off
 	boolean printPlayerLocation = false;
-	boolean printGoalLocation = true;
+	boolean printGoalLocation = false;
 	boolean printLoop = false;
 	DecimalFormat df = new DecimalFormat("##.#");
 
@@ -82,27 +82,31 @@ public class Agent extends SupermarketComponentImpl {
 		setGoalLocation();
 
 		double yShoppingAdjust = 2.5;
+		double xShoppingAdjust = -1.0;
 		double xPos = obsv.players[0].position[0];
 		double yPos = obsv.players[0].position[1];
 		double xError = xPos - goalCoordinates[0];
 		double yError = yPos - goalCoordinates[1];
 
-		if (currentAction == "Shopping") yError-=yShoppingAdjust;
-		//if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
+		if (currentAction == "Shopping") {
+			yError-=yShoppingAdjust;
+			xError+=xShoppingAdjust;
+		}
+
+		if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
+		
 		if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
-			if (yError > -.5) {moveDirection = 0; //North
-				//System.out.println("YError: " + yError);
-			}
-			else if (yError < -.75) {moveDirection = 1; //South
-				//System.out.println("YError: " + yError);
-			}
+			if (yError > -.5) moveDirection = 0; //North
+			else if (yError < -.75) moveDirection = 1; //South
 			else if (xError < -.25) moveDirection = 2; //East
 			else if (xError > .5) moveDirection = 3; //West
 		}
+
 		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
 			moveDirection = 2; //Walk West towards HUB
 		}
-		else { //we must be in right aisle
+
+		else { //we're in right aisle
 			if( xError < -.5) moveDirection = 2; // Walk East
 			else if (xError > .5) moveDirection = 3; //Walk West
 			else moveDirection = 4; //Stop, interact
@@ -220,9 +224,10 @@ public class Agent extends SupermarketComponentImpl {
 				checkOut();
 				break;
 		}
+
 		if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart){
 			actionList.remove(0);
-			System.out.println(currentAction + " COMPLETED");
+			System.out.println(currentAction + " COMPLETED\n");
 			sleep(1000);
 		}
 	}

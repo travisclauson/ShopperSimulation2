@@ -14,7 +14,12 @@ import java.text.DecimalFormat;
 
 
 public class Agent extends SupermarketComponentImpl {
-	SupermarketObservation obsv;
+	public Agent() {
+		super();
+		shouldRunExecutionLoop = true;
+	}
+
+	public static SupermarketObservation obsv = new SupermarketObservation();
 	//int numShelves = obsv.shelves.length;
 	int moveDirection; //0=N, 1=S, 2=E, 3=W, 4=null
 	int count = 0;
@@ -32,12 +37,25 @@ public class Agent extends SupermarketComponentImpl {
 	boolean printLoop = false;
 	DecimalFormat df = new DecimalFormat("##.#");
 
-	public Agent() {
-		super();
-		shouldRunExecutionLoop = true;
+
+	@Override
+	protected void executionLoop() {
+		if (!setupDone) setup();
+		if (printLoop) System.out.println("Loop: " + Integer.toString(count));
+		
+		//SENSE
+		obsv = getLastObservation();
+
+		//DECIDE - where is the next goal, how do we get there, set moveDirection
+		decide();
+
+		//MOVE - move based on moveDirection
+		move();
+
+		count+=1;
 	}
 
-	//intializes Food and action Lists
+	//Prints Shopping and Action List
 	public void setup(){ 
 		obsv = getLastObservation();
 		System.out.println("Shopping List:");
@@ -53,19 +71,9 @@ public class Agent extends SupermarketComponentImpl {
 		System.out.println("Setup Done");
 	}
 
-	@Override
-	protected void executionLoop() {
-		if (!setupDone) setup();
-		if (printLoop) System.out.println("Loop: " + Integer.toString(count)); //Print loop number if set above
-		sense(); //sense the situtation, set the goal
-		decide(obsv); //detirmines next movement direction
-		act(obsv); //moves
-		count+=1;
-	}
-
 	//Finds the coordinates of the desired location
 	public void sense(){ //
-		obsv = getLastObservation();
+		
 		while(true){
 			setGoalLocation(obsv);
 			if (printGoalLocation) System.out.println("Goal Location: " + goalLocation);
@@ -74,7 +82,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Decide which direction to walk
-	public void decide(SupermarketObservation obsv){
+	public void decide(){
 		double yShoppingAdjust = 2.5;
 		double xPos = obsv.players[0].position[0];
 		double yPos = obsv.players[0].position[1];
@@ -104,7 +112,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
-	public void act(SupermarketObservation obsv){
+	public void move(){
 		if (moveDirection == 0) goNorth();
 		if (moveDirection == 1) goSouth(); 
 		if (moveDirection == 2) goEast(); 
@@ -116,7 +124,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Discover what our goal location is: exit, shelf x, register etc.
-	public void setGoalLocation(SupermarketObservation obsv) {
+	public void setGoalLocation() {
 		if (currentAction != actionList.get(0)) {
 			String lastAction = currentAction;
 			currentAction = actionList.get(0);
@@ -143,7 +151,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Detirmine Coordinates of the goal location
-	public void findFoodCoordinates(SupermarketObservation obsv){
+	public void findFoodCoordinates(){
 		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			String currItem;
@@ -168,20 +176,20 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public void findCartsCoordinates (SupermarketObservation obsv) {
+	public void findCartsCoordinates () {
 		goalLocation = "Carts";
 		goalCoordinates = obsv.cartReturns[0].position;
 		goalCoordinates[1] += 0;
 		//System.out.println("Cart Return Location: " + goalCoordinates);
 	}
-	public void findRegisterCoordinates (SupermarketObservation obsv) {
+	public void findRegisterCoordinates () {
 		goalLocation = "Register";
 		goalCoordinates = obsv.registers[0].position;
 		goalCoordinates[1] += 2.75;
 		//System.out.println("goal coordinates: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 		//System.out.println("My Coordinates: " + obsv.players[0].position[0] + ", " + obsv.players[0].position[1]);
 	}
-	public void findExitCoordinates(SupermarketObservation obsv) { // This is a little hard-coded, only works at specific register
+	public void findExitCoordinates() { // This is a little hard-coded, only works at specific register
 		goalLocation = "Exit";
 		goalCoordinates[0] = -2;
 	}
@@ -231,7 +239,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//This is also hardcoded and is probably breaking the rules of one step per cycle
-	public void pickUpFoodItem(SupermarketObservation obsv){
+	public void pickUpFoodItem(){
 		//System.out.println("Attempting to toggle shopping cart and move forward");
 		toggleShoppingCart(); 
 		for(int i=0; i<7; i++) goNorth();

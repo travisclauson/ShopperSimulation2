@@ -75,7 +75,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void sense(){ //
 		
 		while(true){
-			setGoalLocation(obsv);
+			setGoalLocation();
 			if (printGoalLocation) System.out.println("Goal Location: " + goalLocation);
 			if( goalLocation != "") break; //try again if goalLocation is empty
 		}
@@ -119,7 +119,7 @@ public class Agent extends SupermarketComponentImpl {
 		if (moveDirection == 3) goWest();
 		if (moveDirection == 4) {
 			nop();
-			arrivedAtItem(obsv);
+			arrivedAtItem();
 		}
 	}
 
@@ -131,22 +131,22 @@ public class Agent extends SupermarketComponentImpl {
 			System.out.println("New Action: " + currentAction);
 			switch (currentAction){
 				case "Finding Carts":
-					findCartsCoordinates(obsv);
+					findCartsCoordinates();
 					break;
 				case "Shopping":
-					findFoodCoordinates(obsv);
+					findFoodCoordinates();
 					break;
 				case "Checking Out":
-					findRegisterCoordinates(obsv);
+					findRegisterCoordinates();
 					break;
 				case "Exiting":
-					findExitCoordinates(obsv);
+					findExitCoordinates();
 					break;
 			}
 		}
 		// If we're shopping but need to look for a new item
 		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[uniqueItemsInCart]){ 
-			findFoodCoordinates(obsv);
+			findFoodCoordinates();
 		}
 	}
 
@@ -195,7 +195,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	 // Interact with object, then update new goal
-	public void arrivedAtItem(SupermarketObservation obsv){
+	public void arrivedAtItem(){
 		System.out.println("Arrived at " + goalLocation);
 		//interact with object
 		foundGoalLocation = false; //since we've arrived, we set this false for the next location
@@ -209,7 +209,7 @@ public class Agent extends SupermarketComponentImpl {
 			interactWithObject();
 		}
 		if (currentAction == "Shopping"){ //Hacky fix
-			pickUpFoodItem(obsv);
+			pickUpFoodItem();
 			System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
 			if (shoppingListLength != uniqueItemsInCart+1){ //if there are more items on list
 				System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
@@ -249,7 +249,7 @@ public class Agent extends SupermarketComponentImpl {
 		interactWithObject();
 		for(int i=0; i<7; i++) goSouth();
 		moveDirection = obsv.carts[0].direction;
-		act(obsv);
+		move();
 		interactWithObject();
 		interactWithObject();
 		toggleShoppingCart();

@@ -21,7 +21,8 @@ public class Agent extends SupermarketComponentImpl {
 
 	public static SupermarketObservation obsv = new SupermarketObservation();
 
-	int moveDirection; //0=N, 1=S, 2=E, 3=W, 4=null
+	int idealMoveDirection; //0=N, 1=S, 2=E, 3=W, 4=interact, 5=null
+	int actualMoveDirection;
 	int count = 0;
 	double[] goalCoordinates = {0.0,0.0};
 	String goalLocation = "";
@@ -39,6 +40,7 @@ public class Agent extends SupermarketComponentImpl {
 	DecimalFormat df = new DecimalFormat("##.#");
 
 
+
 	@Override
 	protected void executionLoop() {
 		if (!setupDone) setup();
@@ -48,13 +50,16 @@ public class Agent extends SupermarketComponentImpl {
 		obsv = getLastObservation();
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
-		decide();
+		idealMoveDirection = decideIdealDirection();
+		actualMoveDirection = checkNorms();
 
 		//MOVE - move based on moveDirection
-		move();
+		move(actualMoveDirection);
 
 		count+=1;
 	}
+
+
 
 	//Prints Shopping and Action List
 	public void setup(){ 
@@ -75,12 +80,14 @@ public class Agent extends SupermarketComponentImpl {
 		setupDone = true;
 	}
 
-	/////////// 2 CORE FUNCTIONS ///////////
+	/////////// 3 CORE FUNCTIONS ///////////
 
-	//Decide which direction to walk
-	public void decide(){
+	//Decide what our ideal action is
+	public int decideIdealDirection(){ 
+		//not sure if I should return direction or just save it to the global variable
 		setGoalLocation();
 
+		int direction = 5;
 		double yShoppingAdjust = 2.5;
 		double xShoppingAdjust = -1.0;
 		double xPos = obsv.players[0].position[0];
@@ -96,31 +103,37 @@ public class Agent extends SupermarketComponentImpl {
 		if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
 		
 		if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
-			if (yError > -.5) moveDirection = 0; //North
-			else if (yError < -.75) moveDirection = 1; //South
-			else if (xError < -.25) moveDirection = 2; //East
-			else if (xError > .5) moveDirection = 3; //West
+			if (yError > -.5) direction = 0; //North
+			else if (yError < -.75) direction = 1; //South
+			else if (xError < -.25) direction = 2; //East
+			else if (xError > .5) direction = 3; //West
 		}
 
 		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
-			moveDirection = 2; //Walk West towards HUB
+			direction = 2; //Walk West towards HUB
 		}
 
 		else { //we're in right aisle
-			if( xError < -.5) moveDirection = 2; // Walk East
-			else if (xError > .5) moveDirection = 3; //Walk West
-			else moveDirection = 4; //Stop, interact
+			if( xError < -.5) direction = 2; // Walk East
+			else if (xError > .5) direction = 3; //Walk West
+			else direction = 4; //Stop, interact
 		}
-		obsv.players[0].direction = 0;
+		return direction;
+	}
+
+	//Outputs the best moveDirection considering what is ideal and the norms
+	public int checkNorms(){
+		exampleNorm();
+		return idealMoveDirection;
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
-	public void move(){
-		if (moveDirection == 0) goNorth();
-		if (moveDirection == 1) goSouth(); 
-		if (moveDirection == 2) goEast(); 
-		if (moveDirection == 3) goWest();
-		if (moveDirection == 4) {
+	public void move(int dir){
+		if (dir == 0) goNorth();
+		if (dir == 1) goSouth(); 
+		if (dir == 2) goEast(); 
+		if (dir == 3) goWest();
+		if (dir == 4) {
 			nop();
 			arrivedAtItem();
 		}
@@ -254,8 +267,8 @@ public class Agent extends SupermarketComponentImpl {
 		interactWithObject();
 		interactWithObject();
 		for(int i=0; i<7; i++) goSouth();
-		moveDirection = obsv.carts[0].direction;
-		move();
+		idealMoveDirection = obsv.carts[0].direction;
+		move(idealMoveDirection);
 		interactWithObject();
 		interactWithObject();
 		toggleShoppingCart();
@@ -280,6 +293,10 @@ public class Agent extends SupermarketComponentImpl {
 			System.out.println(e);
 		}
 	}
+
+
+	/// Norms ///
+	public void exampleNorm(){
+		return;
+	}
 }
-
-

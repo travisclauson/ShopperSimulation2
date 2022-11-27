@@ -110,7 +110,7 @@ public class Agent extends SupermarketComponentImpl {
 		}
 
 		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
-			direction = 2; //Walk West towards HUB
+			direction = 2; //Walk East towards HUB
 		}
 
 		else { //we're in right aisle
@@ -179,16 +179,30 @@ public class Agent extends SupermarketComponentImpl {
 		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			String currItem;
-			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
+			//String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
+			String desiredFoodItem = "fresh fish";
 			if  (!goalLocation.equals(desiredFoodItem)){ //If we're onto a new item, find coordinates
 				goalLocation = desiredFoodItem;
 				System.out.println("Searching for New Food Item: " + desiredFoodItem);
-				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
-					currItem = obsv.shelves[i].food_name;
-					if (currItem.equals(goalLocation)) {
-						goalCoordinates = obsv.shelves[i].position;
-						//System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						foundCoordinates = true;
+
+				if(desiredFoodItem == "fresh fish" || desiredFoodItem == "prepared foods"){ //item is on counter
+					for (int i = 0; i<obsv.counters.length; i++){
+						currItem = obsv.counters[i].food;
+						if (currItem.equals(goalLocation)) {
+							goalCoordinates = obsv.counters[i].position;
+							System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+							foundCoordinates = true;
+						}
+					}
+				}
+				else { //Item is on shelf
+					for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
+						currItem = obsv.shelves[i].food_name;
+						if (currItem.equals(goalLocation)) {
+							goalCoordinates = obsv.shelves[i].position;
+							System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+							foundCoordinates = true;
+						}
 					}
 				}
 			}

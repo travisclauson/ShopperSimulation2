@@ -45,6 +45,7 @@ public class Agent extends SupermarketComponentImpl {
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
 
+	boolean customShoppingList = true;
 	//print statements on/off
 	boolean printPlayerLocation = false;
 	boolean printGoalLocation = false;
@@ -80,7 +81,8 @@ public class Agent extends SupermarketComponentImpl {
 		System.out.println("\n\nAction List:");
 		System.out.println(actionList);
 
-		shoppingListLength = obsv.players[0].shopping_list.length;
+		if (!customShoppingList) shoppingListLength = obsv.players[0].shopping_list.length;
+		else shoppingListLength = 1;
 		System.out.println("Shopping List:");
 		for(int i=0; i<shoppingListLength; i++){
 			System.out.println(
@@ -239,10 +241,16 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(){
+		String desiredFoodItem;
 		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
-			// String currItem;
-			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
+			// For Live cases
+			if(!customShoppingList) {
+				desiredFoodItem = obsv.players[0].shopping_list[uniqueItemsInCart];
+			}
+			// For Custom Cases
+			else desiredFoodItem = "fresh fish";
+
 			if  (!goalLocation.equals(desiredFoodItem)){ //If we're onto a new item, find coordinates
 				goalLocation = desiredFoodItem;
 				System.out.println("Searching for New Food Item: " + goalLocation);
@@ -259,8 +267,7 @@ public class Agent extends SupermarketComponentImpl {
 				}
 
 				//item is on counter
-				System.out.print("Looking for Counter Item: ");
-				System.out.println(obsv.counters[0].food + ", " + obsv.counters[1].food);
+				//System.out.print("Looking for Counter Item: ");
 				for (int i = 0; i<obsv.counters.length; i++){
 					if (obsv.counters[i].food.equals(goalLocation)) {
 						goalCoordinates = obsv.counters[i].position;
@@ -269,7 +276,7 @@ public class Agent extends SupermarketComponentImpl {
 						counterItem = true;
 						return;
 					}
-					System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
+					//else System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
 				}
 			}
 		}
@@ -330,13 +337,11 @@ public class Agent extends SupermarketComponentImpl {
 		}
 		else if(action.equals("pickUpCounterItem")){
 			subActionList.add(5);
-			subActionList.add(0);
-			subActionList.add(0);
-			for(int i=0; i<5; i++) subActionList.add(2);
+			for(int i=0; i<5; i++) subActionList.add(0);
+			for(int i=0; i<7; i++) subActionList.add(2);
 			for(int i=0; i<3; i++) subActionList.add(4);
-			for(int i=0; i<5; i++) subActionList.add(3);
-			subActionList.add(1);
-			subActionList.add(1);
+			for(int i=0; i<7; i++) subActionList.add(3);
+			for(int i=0; i<5; i++) subActionList.add(1);
 			subActionList.add(2);
 			subActionList.add(4);
 			subActionList.add(4);

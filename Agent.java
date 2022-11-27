@@ -61,7 +61,7 @@ public class Agent extends SupermarketComponentImpl {
 		obsv = getLastObservation();
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
-		idealMoveDirection = decideIdealDirection();
+		idealMoveDirection = decideIdealAction();
 		actualMoveDirection = checkNorms();
 
 		//MOVE - move based on moveDirection
@@ -94,35 +94,35 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// 3 CORE FUNCTIONS ///////////
 
 	//Decide what our ideal action is
-	public int decideIdealDirection(){ 
+	public int decideIdealAction(){ 
 		//not sure if I should return direction or just save it to the global variable
 		int direction = 6;
 
 		if (isMoving) {
 			if (!hasGoal) setGoalLocation();
 
-		//int direction = 5;
-		double yShoppingAdjust = 2.5;
-		double xShelfAdjust = -1.0;
-		double xCounterAdjust = 1.5;
-		double xPos = obsv.players[0].position[0];
-		double yPos = obsv.players[0].position[1];
-		double xError = xPos - goalCoordinates[0];
-		double yError = yPos - goalCoordinates[1];
+			double yShoppingAdjust = 2.5;
+			double xShelfAdjust = -1.0;
+			double xCounterAdjust = 1.5;
+			double xPos = obsv.players[0].position[0];
+			double yPos = obsv.players[0].position[1];
 
-		if (currentAction == "Shopping") {
-			yError-=yShoppingAdjust;
-			if(counterItem == true){
-				xError+=xCounterAdjust;
-				System.out.println("Adjusted X for counter");
+			if (currentAction == "Shopping") {
+				yPos-=yShoppingAdjust;
+				if(counterItem == true){
+					xPos+=xCounterAdjust;
+					System.out.println("Adjusted X for counter");
+				}
+				else if (shelfItem = true) {
+					xPos+=xShelfAdjust;
+				}
 			}
-			else if (shelfItem = true) {
-				xError+=xShelfAdjust;
-			}
-		}
+
+			double xError = xPos - goalCoordinates[0];
+			double yError = yPos - goalCoordinates[1];
 
 			if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
-			
+				
 			if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
 				if (yError > -.5) direction = 0; //North
 				else if (yError < -.75) direction = 1; //South
@@ -130,34 +130,42 @@ public class Agent extends SupermarketComponentImpl {
 				else if (xError > .5) direction = 3; //West
 			}
 
-		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
-			direction = 2; //Walk East towards HUB
+			else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
+				direction = 2; //Walk East towards HUB
+			}
+
+				else { //we're in right aisle
+					if( xError < -.5) direction = 2; // Walk East
+					else if (xError > .5) direction = 3; //Walk West
+					else {
+						isMoving = false;//direction = 4; //Stop, interact
+						System.out.println("Arrived at " + goalLocation);
+					}
+				}
 		}
 
-			else { //we're in right aisle
-				if( xError < -.5) direction = 2; // Walk East
-				else if (xError > .5) direction = 3; //Walk West
-				else isMoving = false;//direction = 4; //Stop, interact
-			}
-		}
-		else {
-			hasGoal = false; //since we've arrived, we set this false for the next goal
-			System.out.println("Arrived at " + goalLocation);
-			// foundCoordinates = false; //since we've arrived, we set this false for the next location
-			
+		else { //not moving
 			if (subActionList.size() > 0) {
 				direction = subActionList.get(0);
 				direction = direction < 0 ? obsv.carts[cartIndex].direction : direction ;
 				subActionList.remove(0);
-			} else {
+				if (subActionList.size() == 0){
+					hasGoal = false; //since we've arrived, we set this false for the next goal
+				}
+			} 
+			else {
 				isMoving = true;
+
 				if (currentAction == "Shopping") {
-					System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
-					if (shoppingListLength != uniqueItemsInCart+1) { //if there are more items on list
+					System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart\n");
+					System.out.println();
+					if (shoppingListLength >= uniqueItemsInCart+1) { //if there are more items on list
 						System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
 						sleep(100);
 					}
-				} else if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart) {
+				} 
+				//Major Action Complete
+				if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart+1) {
 					if (currentAction == "findingCarts") cartIndex = obsv.players[0].curr_cart;
 					actionList.remove(0);
 					System.out.println(currentAction + " COMPLETED\n");
@@ -243,7 +251,6 @@ public class Agent extends SupermarketComponentImpl {
 					if (obsv.shelves[i].food_name.equals(goalLocation)) {
 						goalCoordinates = obsv.shelves[i].position;
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						foundCoordinates = true;
 						shelfItem = true;
 						counterItem = false;
 						return;
@@ -257,7 +264,6 @@ public class Agent extends SupermarketComponentImpl {
 					if (obsv.counters[i].food.equals(goalLocation)) {
 						goalCoordinates = obsv.counters[i].position;
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						foundCoordinates = true;
 						shelfItem = false;
 						counterItem = true;
 						return;

@@ -32,6 +32,8 @@ public class Agent extends SupermarketComponentImpl {
 	ArrayList<String> actionList;
 	// boolean foundCoordinates = false; // not used
 	int shoppingListLength = 0;
+	boolean shelfItem = false;
+	boolean counterItem = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -99,15 +101,25 @@ public class Agent extends SupermarketComponentImpl {
 		if (isMoving) {
 			if (!hasGoal) setGoalLocation();
 
-			double xPos = obsv.players[0].position[0];
-			double yPos = obsv.players[0].position[1];
-			double xError = xPos - goalCoordinates[0];
-			double yError = yPos - goalCoordinates[1];
+		//int direction = 5;
+		double yShoppingAdjust = 2.5;
+		double xShelfAdjust = -1.0;
+		double xCounterAdjust = 1.5;
+		double xPos = obsv.players[0].position[0];
+		double yPos = obsv.players[0].position[1];
+		double xError = xPos - goalCoordinates[0];
+		double yError = yPos - goalCoordinates[1];
 
-			if (currentAction == "Shopping") {
-				yError-=yShoppingAdjust;
-				xError+=xShoppingAdjust;
+		if (currentAction == "Shopping") {
+			yError-=yShoppingAdjust;
+			if(counterItem == true){
+				xError+=xCounterAdjust;
+				System.out.println("Adjusted X for counter");
 			}
+			else if (shelfItem = true) {
+				xError+=xShelfAdjust;
+			}
+		}
 
 			if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
 			
@@ -118,9 +130,9 @@ public class Agent extends SupermarketComponentImpl {
 				else if (xError > .5) direction = 3; //West
 			}
 
-			else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
-				direction = 2; //Walk West towards HUB
-			}
+		else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
+			direction = 2; //Walk East towards HUB
+		}
 
 			else { //we're in right aisle
 				if( xError < -.5) direction = 2; // Walk East
@@ -224,14 +236,33 @@ public class Agent extends SupermarketComponentImpl {
 			String desiredFoodItem =  obsv.players[0].shopping_list[uniqueItemsInCart];
 			if  (!goalLocation.equals(desiredFoodItem)){ //If we're onto a new item, find coordinates
 				goalLocation = desiredFoodItem;
-				System.out.println("Searching for New Food Item: " + desiredFoodItem);
+				System.out.println("Searching for New Food Item: " + goalLocation);
+
+				//Item is on shelf
 				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
-					// currItem = obsv.shelves[i].food_name;
 					if (obsv.shelves[i].food_name.equals(goalLocation)) {
 						goalCoordinates = obsv.shelves[i].position;
-						//System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						// foundCoordinates = true;
+						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+						foundCoordinates = true;
+						shelfItem = true;
+						counterItem = false;
+						return;
 					}
+				}
+
+				//item is on counter
+				System.out.print("Looking for Counter Item: ");
+				System.out.println(obsv.counters[0].food + ", " + obsv.counters[1].food);
+				for (int i = 0; i<obsv.counters.length; i++){
+					if (obsv.counters[i].food.equals(goalLocation)) {
+						goalCoordinates = obsv.counters[i].position;
+						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+						foundCoordinates = true;
+						shelfItem = false;
+						counterItem = true;
+						return;
+					}
+					System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
 				}
 			}
 		}

@@ -77,7 +77,7 @@ public class Agent extends SupermarketComponentImpl {
 		obsv = getLastObservation();
 
 		actionList = initializeActionList();
-		System.out.println("Action List:");
+		System.out.println("\n\nAction List:");
 		System.out.println(actionList);
 
 		shoppingListLength = obsv.players[0].shopping_list.length;
@@ -111,7 +111,6 @@ public class Agent extends SupermarketComponentImpl {
 				yPos-=yShoppingAdjust;
 				if(counterItem == true){
 					xPos+=xCounterAdjust;
-					System.out.println("Adjusted X for counter");
 				}
 				else if (shelfItem = true) {
 					xPos+=xShelfAdjust;
@@ -210,7 +209,8 @@ public class Agent extends SupermarketComponentImpl {
 					break;
 				case "Shopping":
 					findFoodCoordinates();
-					currentSubAction = "pickUpFoodItem";
+					if (shelfItem == true) currentSubAction = "pickUpShelfItem";
+					if (counterItem == true) currentSubAction = "pickUpCounterItem";
 					subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Checking Out":
@@ -226,7 +226,8 @@ public class Agent extends SupermarketComponentImpl {
 		// If we're shopping but need to look for a new item
 		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[uniqueItemsInCart]){ 
 			findFoodCoordinates();
-			currentSubAction = "pickUpFoodItem";
+			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
+			if (counterItem == true) currentSubAction = "pickUpCounterItem";
 			subActionList = initializeSubActionList(currentSubAction);
 		}
 	}
@@ -304,7 +305,8 @@ public class Agent extends SupermarketComponentImpl {
 		if (action.equals("findCarts")) { //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart
 			subActionList.add(1);
 			subActionList.add(4);
-		} else if (action.equals("pickUpFoodItem")) {
+		} 
+		else if (action.equals("pickUpShelfItem")) {
 			subActionList.add(5);
 			for(int i=0; i<7; i++) subActionList.add(0);
 			subActionList.add(4);
@@ -314,7 +316,8 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(5);
-		} else if (action.equals("checkOut")) {
+		} 
+		else if (action.equals("checkOut")) {
 			subActionList.add(5);
 			subActionList.add(0);
 			subActionList.add(0);
@@ -323,6 +326,20 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(3);
+			subActionList.add(5);
+		}
+		else if(action.equals("pickUpCounterItem")){
+			subActionList.add(5);
+			subActionList.add(0);
+			subActionList.add(0);
+			for(int i=0; i<5; i++) subActionList.add(2);
+			for(int i=0; i<3; i++) subActionList.add(4);
+			for(int i=0; i<5; i++) subActionList.add(3);
+			subActionList.add(1);
+			subActionList.add(1);
+			subActionList.add(2);
+			subActionList.add(4);
+			subActionList.add(4);
 			subActionList.add(5);
 		}
 		return subActionList;

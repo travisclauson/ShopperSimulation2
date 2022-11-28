@@ -331,6 +331,7 @@ public class Agent extends SupermarketComponentImpl {
 		return actionList;
 	}
 
+	//This sets up a queue of movements/actions for each scenario
 	public ArrayList<Integer> initializeSubActionList(String action){
 		subActionList = new ArrayList<Integer>();
 		if (action.equals("findCarts")) { //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart
@@ -338,16 +339,18 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(4);
 		} 
 		else if (action.equals("pickUpShelfItem")) {
-			subActionList.add(5);
-			int stepNum = (int)Math.floor((obsv.players[playerIndex].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
-			for(int i=0; i<stepNum; i++) subActionList.add(0);
-			subActionList.add(4);
-			subActionList.add(4);
-			for(int i=0; i<stepNum; i++) subActionList.add(1);
-			subActionList.add(-1); // decide on the fly
-			subActionList.add(4);
-			subActionList.add(4);
-			subActionList.add(5);
+			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
+				subActionList.add(5);
+				int stepNum = (int)Math.floor((obsv.players[playerIndex].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
+				for(int i=0; i<stepNum; i++) subActionList.add(0);
+				subActionList.add(4);
+				subActionList.add(4);
+				for(int i=0; i<stepNum; i++) subActionList.add(1);
+				subActionList.add(-1); // decide on the fly
+				subActionList.add(4);
+				subActionList.add(4);
+				subActionList.add(5);
+			}
 		} 
 		else if (action.equals("checkOut")) {
 			subActionList.add(5);
@@ -423,68 +426,4 @@ public class Agent extends SupermarketComponentImpl {
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
 	}
-
-
-		// public void arrivedAtItem(){
-	// 	System.out.println("Arrived at " + goalLocation);
-	// 	// foundCoordinates = false; //since we've arrived, we set this false for the next location
-		
-	// 	switch(currentAction){
-	// 		case "Finding Carts":
-	// 			goSouth();
-	// 			interactWithObject();
-	// 			break;
-
-	// 		case "Shopping":
-	// 			if (shoppingListLength > uniqueItemsInCart) {
-	// 				pickUpFoodItem();
-	// 				System.out.println("Added " + obsv.players[playerIndex].shopping_list[uniqueItemsInCart] + " to cart");
-	// 				if (shoppingListLength != uniqueItemsInCart+1){ //if there are more items on list
-	// 					System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
-	// 					sleep(1000);
-	// 				}
-	// 			}
-	// 			break;
-
-	// 		case "Checking Out":
-	// 			checkOut();
-	// 			break;
-	// 	}
-
-	// 	if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart){
-	// 		actionList.remove(0);
-	// 		System.out.println(currentAction + " COMPLETED\n");
-	// 		sleep(1000);
-	// 	}
-	// }
-
-
-	// public void checkOut(){
-	// 	toggleShoppingCart();
-	// 	goNorth();
-	// 	goNorth();
-	// 	goNorth();
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	sleep(500);
-	// 	goWest();
-	// 	toggleShoppingCart();
-	// }
-
-		//This is also hardcoded and is probably breaking the rules of one step per cycle
-	// public void pickUpFoodItem(){
-	// 	//System.out.println("Attempting to toggle shopping cart and move forward");
-	// 	toggleShoppingCart(); 
-	// 	for(int i=0; i<7; i++) goNorth();
-	// 	sleep(500);
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	for(int i=0; i<7; i++) goSouth();
-	// 	idealMoveDirection = obsv.carts[0].direction;
-	// 	move(idealMoveDirection);
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	toggleShoppingCart();
-	// }
 }

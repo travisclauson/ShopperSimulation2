@@ -43,6 +43,12 @@ public class Agent extends SupermarketComponentImpl {
 	double yShoppingAdjust = 2.5;
 	double xShoppingAdjust = -1.0;
 	double oneStep = 0.15;
+	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
+	double wallXmin = 0.5;
+	double wallXmax = 18.89;
+	double wallYmin = 2.1;
+	double wallYmax = 24.1;
+	double exitX = -2;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -50,11 +56,13 @@ public class Agent extends SupermarketComponentImpl {
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
 	boolean[][] possibleMoveDirections = new boolean[2][7]; //each row represents a different norm
-	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
+	int tempMoveDirection = 6;
+	int[] checkOutCancelationThreshold = {3, 3};
+	int[] counterCancelationThreshold = {17, 18};
 
 	//Custom Scenario
 	boolean customShoppingList = false;
-	String customFoodItem = "brie cheese";
+	String customFoodItem = "milk"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerCoordinates = false;
@@ -81,7 +89,6 @@ public class Agent extends SupermarketComponentImpl {
 
 		//MOVE - move based on moveDirection
 		move(actualMoveDirection);
-
 		count+=1;
 	}
 
@@ -125,7 +132,7 @@ public class Agent extends SupermarketComponentImpl {
 
 			if (printPlayerCoordinates) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
 			if (printLocationError) System.out.println("Error: X: " + df.format(xError) + "  Y: " + df.format(yError));	
-			if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
+			if (obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
 				if (yError > -.5) direction = 0; //North
 				else if (yError < -.75) direction = 1; //South
 				else if (xError < -.25) direction = 2; //East
@@ -202,7 +209,15 @@ public class Agent extends SupermarketComponentImpl {
 
 		if (idealMoveDirection < 4) {
 			//System.out.println("checked");
-			objectCollisionNorm(idealMoveDirection);
+			wallCollisionNorm();
+			if (tempMoveDirection != 6)
+				objectCollisionNorm();
+			if (tempMoveDirection != 6)
+				playerCollisionNorm();
+		} else if (tempMoveDirection == 4) {
+
+			// Finally check if interaction is canceled
+			interactionCancellationNorm();
 		}
 	}
 	
@@ -226,22 +241,19 @@ public class Agent extends SupermarketComponentImpl {
 			currentAction = actionList.get(0);
 			System.out.println("New Action: " + currentAction);
 			
-			switch (currentAction){
+			switch (currentAction) {
 				case "Finding Carts":
 					findCartsCoordinates();
 					currentSubAction = "findCarts";
-					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Shopping":
 					findFoodCoordinates();
 					if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 					if (counterItem == true) currentSubAction = "pickUpCounterItem";
-					//subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Checking Out":
 					findRegisterCoordinates();
 					currentSubAction = "checkOut";
-					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Exiting":
 					findExitCoordinates();
@@ -249,11 +261,10 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		// If we're shopping but need to look for a new item
-		else if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]){ 
+		else if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]) { 
 			findFoodCoordinates();
 			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 			if (counterItem == true) currentSubAction = "pickUpCounterItem";
-			//subActionList = initializeSubActionList(currentSubAction);
 		}
 	}
 
@@ -327,7 +338,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 	public void findExitCoordinates() {
 		goalLocation = "Exit";
-		goalCoordinates[0] = -2;
+		goalCoordinates[0] = exitX;
 		adjustedGoalCoordinates[0] = goalCoordinates[0];
 		System.out.println("Exit: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 	}
@@ -367,8 +378,10 @@ public class Agent extends SupermarketComponentImpl {
 		} 
 		else if (action.equals("checkOut")) {
 			subActionList.add(5);
-			subActionList.add(0);
-			subActionList.add(0);
+			// need fix or sometimes player run into register. 
+			// Seems like to happen when check out after pick up an object that is located above the register.
+			int stepNum = 2; //(int)floor((obsv.players[playerIndex].position[1] - goalCoordinates[1]) / oneStep);
+			for (int i = 0; i < 2; i++) subActionList.add(0);
 			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(3);
@@ -402,6 +415,29 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 
+	/////////////////////////// Norms ///////////////////////////
+	public void wallCollisionNorm(){
+		double currX = obsv.players[playerIndex].position[0];
+		double currY = obsv.players[playerIndex].position[1];
+		possibleMoveDirections[0] = getNextLocation(0, currX, currY)[1] > wallYmin;
+		possibleMoveDirections[1] = getNextLocation(1, currX, currY)[1] < wallYmax;
+		possibleMoveDirections[2] = getNextLocation(2, currX, currY)[0] < wallXmax;
+		if (currentAction != "Exiting") possibleMoveDirections[3] = getNextLocation(3, currX, currY)[0] > wallXmin;
+		else possibleMoveDirections[3] = getNextLocation(3, currX, currY)[0] > exitX;
+		return;
+	}
+
+	public void objectCollisionNorm(){
+		double currX = obsv.players[playerIndex].position[0];
+		double currY = obsv.players[playerIndex].position[1];
+		checkObjectCollision(obsv.shelves, currX, currY, "object");
+		checkObjectCollision(obsv.counters, currX, currY, "object");
+		checkObjectCollision(obsv.registers, currX, currY, "object");
+		updateActualMoveDirection();
+		return;
+	}
+
+	public void playerCollisionNorm(){ // player collision and personal space norm
 	/////////// NORM FUNCTIONS ///////////
 
 	// Norm 1
@@ -409,23 +445,51 @@ public class Agent extends SupermarketComponentImpl {
 		int collisionNorm = 1;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
-		checkObjectCollision(obsv.shelves, currX, currY, collisionNorm);
-		checkObjectCollision(obsv.counters, currX, currY, collisionNorm);
-		checkObjectCollision(obsv.registers, currX, currY, collisionNorm);
+		checkObjectCollision(obsv.players, currX, currY, "player");
+		updateActualMoveDirection();
+		return;
 	}
 
-	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY, int normIndex) {
+	public void interactionCancellationNorm() {
+		if (currentSubAction == "checkOut")
+			if (subActionList.size() >= checkOutCancelationThreshold[0]
+			&& subActionList.size() <= checkOutCancelationThreshold[1])
+				tempMoveDirection = subActionList.get(0);
+		else if (subActionList.size() >= counterCancelationThreshold[0]
+			&& subActionList.size() <= counterCancelationThreshold[1])
+				tempMoveDirection = subActionList.get(0);
+		return;
+	}
+
+	// Norm helper functions
+	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY, String type, int normIndex) {
 		for (int i = 0; i < 4; i++)
-			if (checkObjectCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
-				possibleMoveDirections[normIndex][i] = false;
-				break;
-			}
+			if (type == "object")
+				if (checkObjectCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
+					possibleMoveDirections[normIndex][i] = false;
+					break;
+				}
+			else if (type == "player")
+				if (checkPlayerCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
+					possibleMoveDirections[normIndex][i] = false;
+					break;
+				}
 	}
 
 	public boolean checkObjectCollisionHelper(SupermarketObservation.InteractiveObject[] objArr, double[] nextLocation) {
 		for (int i = 0; i < objArr.length; i++) // check collision with object
 			if (objArr[i].collision(obsv.players[playerIndex], nextLocation[0], nextLocation[1]))
 				return true;
+		return false;
+	}
+
+	public boolean checkPlayerCollisionHelper(SupermarketObservation.InteractiveObject[] playerArr, double[] nextLocation) {
+		for (int i = 0; i < playerArr.length; i++) // check collision with object
+			if (i != playerIndex)
+				if (SupermarketObservation.overlap(playerArr[i].position[0], playerArr[i].position[1], playerArr[i].width,
+						playerArr[i].height, playerArr[playerIndex].position[0], playerArr[playerIndex].position[1],
+						playerArr[playerIndex].width, playerArr[playerIndex].height))
+					return true;
 		return false;
 	}
 

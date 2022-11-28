@@ -362,16 +362,18 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(5);
 		}
 		else if(action.equals("pickUpCounterItem")){
-			subActionList.add(5);
-			for(int i=0; i<5; i++) subActionList.add(0);
-			for(int i=0; i<7; i++) subActionList.add(2);
-			for(int i=0; i<3; i++) subActionList.add(4);
-			for(int i=0; i<7; i++) subActionList.add(3);
-			for(int i=0; i<5; i++) subActionList.add(1);
-			subActionList.add(2);
-			subActionList.add(4);
-			subActionList.add(4);
-			subActionList.add(5);
+			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
+				subActionList.add(5);
+				for(int i=0; i<5; i++) subActionList.add(0);
+				for(int i=0; i<7; i++) subActionList.add(2);
+				for(int i=0; i<3; i++) subActionList.add(4);
+				for(int i=0; i<7; i++) subActionList.add(3);
+				for(int i=0; i<5; i++) subActionList.add(1);
+				subActionList.add(2);
+				subActionList.add(4);
+				subActionList.add(4);
+				subActionList.add(5);
+			}
 		}
 		return subActionList;
 	}

@@ -1,8 +1,6 @@
 //README
-// I couldn't figure out how to actually grab the items and put them in the cart
-// For now, approaching a shelf is hacky, i just ram into it
-// I initialize the shopping list myself at the bottom of this script (line 259)
-// It should work for any food items except the back counters
+// By Travis Clauson and Lidi Yafei
+// Date: 28 November 2022
 
 import java.util.ArrayList;
 import java.util.Arrays;

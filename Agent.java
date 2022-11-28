@@ -21,6 +21,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	public static SupermarketObservation obsv = new SupermarketObservation();
 
+	int playerIndex;
 	int idealMoveDirection; //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart, otherwise=null
 	int actualMoveDirection;
 	int count = 0;
@@ -30,6 +31,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean setupDone = false;
 	int uniqueItemsInCart = 0;
 	ArrayList<String> actionList;
+	int currentShelfIndex = 0;
 	// boolean foundCoordinates = false; // not used
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
@@ -84,17 +86,19 @@ public class Agent extends SupermarketComponentImpl {
 	public void setup(){ 
 		obsv = getLastObservation();
 
+		playerIndex = obsv.players.length - 1;
+		System.out.println("We are initialized as Player: " + playerIndex + "\n");
 		actionList = initializeActionList();
 		System.out.println("\n\nAction List:");
 		System.out.println(actionList + "\n");
 
-		if (!customShoppingList) shoppingListLength = obsv.players[0].shopping_list.length;
+		if (!customShoppingList) shoppingListLength = obsv.players[playerIndex].shopping_list.length;
 		else shoppingListLength = 1;
 		System.out.println("Shopping List:");
 		for(int i=0; i<shoppingListLength; i++){
 			System.out.println(
-			String.valueOf(obsv.players[0].list_quant[i]) + " - " + 
-			obsv.players[0].shopping_list[i]);
+			String.valueOf(obsv.players[playerIndex].list_quant[i]) + " - " + 
+			obsv.players[playerIndex].shopping_list[i]);
 		}
 		setupDone = true;
 	}
@@ -108,8 +112,8 @@ public class Agent extends SupermarketComponentImpl {
 		if (isMoving) {
 			if (!hasGoal) setGoalLocation();
 
-			double xPos = obsv.players[0].position[0];
-			double yPos = obsv.players[0].position[1];
+			double xPos = obsv.players[playerIndex].position[0];
+			double yPos = obsv.players[playerIndex].position[1];
 
 			double xError = xPos - goalCoordinates[0];
 			double yError = yPos - goalCoordinates[1];
@@ -163,7 +167,7 @@ public class Agent extends SupermarketComponentImpl {
 				isMoving = true;
 
 				if (currentAction == "Shopping") {
-					System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart\n");
+					System.out.println("Added " + obsv.players[playerIndex].shopping_list[uniqueItemsInCart] + " to cart\n");
 					System.out.println();
 					if (shoppingListLength >= uniqueItemsInCart+1) { //if there are more items on list
 						System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
@@ -172,7 +176,7 @@ public class Agent extends SupermarketComponentImpl {
 				} 
 				//Major Action Complete
 				if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart+1) {
-					if (currentAction == "findingCarts") cartIndex = obsv.players[0].curr_cart;
+					if (currentAction == "findingCarts") cartIndex = obsv.players[playerIndex].curr_cart;
 					actionList.remove(0);
 					System.out.println(currentAction + " COMPLETED\n");
 					sleep(100);
@@ -187,7 +191,7 @@ public class Agent extends SupermarketComponentImpl {
 		int tempMoveDirection = idealMoveDirection;
 		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
 		if (tempMoveDirection < 4) {
-			System.out.println("checked");
+			//System.out.println("checked");
 			tempMoveDirection = objectCollisionNorm(tempMoveDirection);
 		}
 		return tempMoveDirection;
@@ -236,7 +240,7 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		// If we're shopping but need to look for a new item
-		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[uniqueItemsInCart]){ 
+		else if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]){ 
 			findFoodCoordinates();
 			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 			if (counterItem == true) currentSubAction = "pickUpCounterItem";
@@ -261,7 +265,7 @@ public class Agent extends SupermarketComponentImpl {
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			// For Live cases
 			if(!customShoppingList) {
-				desiredFoodItem = obsv.players[0].shopping_list[uniqueItemsInCart];
+				desiredFoodItem = obsv.players[playerIndex].shopping_list[uniqueItemsInCart];
 			}
 			// For Custom Cases
 			else desiredFoodItem = customFoodItem;
@@ -279,6 +283,7 @@ public class Agent extends SupermarketComponentImpl {
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						shelfItem = true;
 						counterItem = false;
+						currentShelfIndex = i;
 						return;
 					}
 				}
@@ -307,7 +312,7 @@ public class Agent extends SupermarketComponentImpl {
 		goalCoordinates = obsv.registers[0].position;
 		goalCoordinates[1] += 3.25;
 		System.out.println("Register: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-		//System.out.println("My Coordinates: " + obsv.players[0].position[0] + ", " + obsv.players[0].position[1]);
+		//System.out.println("My Coordinates: " + obsv.players[playerIndex].position[0] + ", " + obsv.players[playerIndex].position[1]);
 	}
 	public void findExitCoordinates() { // This is a little hard-coded, only works at specific register
 		goalLocation = "Exit";
@@ -326,6 +331,7 @@ public class Agent extends SupermarketComponentImpl {
 		return actionList;
 	}
 
+	//This sets up a queue of movements/actions for each scenario
 	public ArrayList<Integer> initializeSubActionList(String action){
 		subActionList = new ArrayList<Integer>();
 		if (action.equals("findCarts")) { //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart
@@ -333,16 +339,18 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(4);
 		} 
 		else if (action.equals("pickUpShelfItem")) {
-			subActionList.add(5);
-			int stepNum = (int)Math.floor((obsv.players[0].position[1] - goalCoordinates[1] - shelfBuffer) / oneStep) - 1;
-			for(int i=0; i<stepNum; i++) subActionList.add(0);
-			subActionList.add(4);
-			subActionList.add(4);
-			for(int i=0; i<stepNum; i++) subActionList.add(1);
-			subActionList.add(-1); // decide on the fly
-			subActionList.add(4);
-			subActionList.add(4);
-			subActionList.add(5);
+			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
+				subActionList.add(5);
+				int stepNum = (int)Math.floor((obsv.players[playerIndex].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
+				for(int i=0; i<stepNum; i++) subActionList.add(0);
+				subActionList.add(4);
+				subActionList.add(4);
+				for(int i=0; i<stepNum; i++) subActionList.add(1);
+				subActionList.add(-1); // decide on the fly
+				subActionList.add(4);
+				subActionList.add(4);
+				subActionList.add(5);
+			}
 		} 
 		else if (action.equals("checkOut")) {
 			subActionList.add(5);
@@ -381,8 +389,8 @@ public class Agent extends SupermarketComponentImpl {
 
 	/// Norms ///
 	public int objectCollisionNorm(int tempMoveDirection){
-		double currX = obsv.players[0].position[0];
-		double currY = obsv.players[0].position[1];
+		double currX = obsv.players[playerIndex].position[0];
+		double currY = obsv.players[playerIndex].position[1];
 		checkObjectCollision(obsv.shelves, currX, currY);
 		checkObjectCollision(obsv.counters, currX, currY);
 		checkObjectCollision(obsv.registers, currX, currY);
@@ -404,7 +412,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	public boolean checkObjectCollisionHelper(SupermarketObservation.InteractiveObject[] objArr, double[] nextLocation) {
 		for (int i = 0; i < objArr.length; i++) // check collision with object
-			if (objArr[i].collision(obsv.players[0], nextLocation[0], nextLocation[1]))
+			if (objArr[i].collision(obsv.players[playerIndex], nextLocation[0], nextLocation[1]))
 				return true;
 		return false;
 	}
@@ -418,68 +426,4 @@ public class Agent extends SupermarketComponentImpl {
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
 	}
-
-
-		// public void arrivedAtItem(){
-	// 	System.out.println("Arrived at " + goalLocation);
-	// 	// foundCoordinates = false; //since we've arrived, we set this false for the next location
-		
-	// 	switch(currentAction){
-	// 		case "Finding Carts":
-	// 			goSouth();
-	// 			interactWithObject();
-	// 			break;
-
-	// 		case "Shopping":
-	// 			if (shoppingListLength > uniqueItemsInCart) {
-	// 				pickUpFoodItem();
-	// 				System.out.println("Added " + obsv.players[0].shopping_list[uniqueItemsInCart] + " to cart");
-	// 				if (shoppingListLength != uniqueItemsInCart+1){ //if there are more items on list
-	// 					System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
-	// 					sleep(1000);
-	// 				}
-	// 			}
-	// 			break;
-
-	// 		case "Checking Out":
-	// 			checkOut();
-	// 			break;
-	// 	}
-
-	// 	if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart){
-	// 		actionList.remove(0);
-	// 		System.out.println(currentAction + " COMPLETED\n");
-	// 		sleep(1000);
-	// 	}
-	// }
-
-
-	// public void checkOut(){
-	// 	toggleShoppingCart();
-	// 	goNorth();
-	// 	goNorth();
-	// 	goNorth();
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	sleep(500);
-	// 	goWest();
-	// 	toggleShoppingCart();
-	// }
-
-		//This is also hardcoded and is probably breaking the rules of one step per cycle
-	// public void pickUpFoodItem(){
-	// 	//System.out.println("Attempting to toggle shopping cart and move forward");
-	// 	toggleShoppingCart(); 
-	// 	for(int i=0; i<7; i++) goNorth();
-	// 	sleep(500);
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	for(int i=0; i<7; i++) goSouth();
-	// 	idealMoveDirection = obsv.carts[0].direction;
-	// 	move(idealMoveDirection);
-	// 	interactWithObject();
-	// 	interactWithObject();
-	// 	toggleShoppingCart();
-	// }
 }

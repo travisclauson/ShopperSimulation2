@@ -38,12 +38,15 @@ public class Agent extends SupermarketComponentImpl {
 	// position constants
 	double yShoppingAdjust = 2.5;
 	double xShoppingAdjust = -1.0;
+	double oneStep = 0.15;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
+	int tempMoveDirection;
+	boolean[] possibleMoveDirections = {true, true, true, true};
 
 	//print statements on/off
 	boolean printPlayerLocation = false;
@@ -62,7 +65,8 @@ public class Agent extends SupermarketComponentImpl {
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
-		actualMoveDirection = checkNorms();
+		checkNorms();
+		actualMoveDirection = tempMoveDirection;
 
 		//MOVE - move based on moveDirection
 		move(actualMoveDirection);
@@ -87,7 +91,53 @@ public class Agent extends SupermarketComponentImpl {
 			String.valueOf(obsv.players[0].list_quant[i]) + " - " + 
 			obsv.players[0].shopping_list[i]);
 		}
-
+		/*
+		for (int i = 0; i < obsv.shelves.length; i++) {
+			System.out.println("Shelves");
+			System.out.print(obsv.shelves[i].position[0]);
+			System.out.print(" ");
+			System.out.println(obsv.shelves[i].position[1]);
+			System.out.println(obsv.shelves[i].width);
+			System.out.println(obsv.shelves[i].height);
+		}
+		System.out.println();
+		for (int i = 0; i < obsv.counters.length; i++) {
+			System.out.println("counters");
+			System.out.println(obsv.counters[i].position[0]);
+			System.out.print(" ");
+			System.out.println(obsv.counters[i].position[1]);
+			System.out.println(obsv.counters[i].width);
+			System.out.println(obsv.counters[i].height);
+		}
+		System.out.println();
+		for (int i = 0; i < obsv.registers.length; i++) {
+			System.out.println("registers");
+			System.out.println(obsv.registers[i].position[0]);
+			System.out.print(" ");
+			System.out.println(obsv.registers[i].position[1]);
+			System.out.println(obsv.registers[i].width);
+			System.out.println(obsv.registers[i].height);
+		}
+		System.out.println();
+		for (int i = 0; i < obsv.cartReturns.length; i++) {
+			System.out.println("cartReturns");
+			System.out.println(obsv.cartReturns[i].position[0]);
+			System.out.print(" ");
+			System.out.println(obsv.cartReturns[i].position[1]);
+			System.out.println(obsv.cartReturns[i].width);
+			System.out.println(obsv.cartReturns[i].height);
+		}
+		System.out.println();
+		for (int i = 0; i < obsv.basketReturns.length; i++) {
+			System.out.println("basketReturns");
+			System.out.println(obsv.basketReturns[i].position[0]);
+			System.out.print(" ");
+			System.out.println(obsv.basketReturns[i].position[1]);
+			System.out.println(obsv.basketReturns[i].width);
+			System.out.println(obsv.basketReturns[i].height);
+		}
+		System.out.println();
+		*/
 		setupDone = true;
 	}
 
@@ -177,9 +227,13 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Outputs the best moveDirection considering what is ideal and the norms
-	public int checkNorms(){
-		exampleNorm();
-		return idealMoveDirection;
+	public void checkNorms(){
+		tempMoveDirection = idealMoveDirection;
+		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
+		if (tempMoveDirection < 4) {
+			tempMoveDirection = objectCollisionNorm();
+		} else return;
+		// return idealMoveDirection;
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -190,6 +244,9 @@ public class Agent extends SupermarketComponentImpl {
 		else if (dir == 3) goWest();
 		else if (dir == 4) {interactWithObject(); sleep(200);}
 		else if (dir == 5) {toggleShoppingCart(); sleep(200);}
+		// System.out.print(obsv.players[0].position[0]);
+		// System.out.print(" ");
+		// System.out.println(obsv.players[0].position[1]);
 	}
 
 	/////////// SECONDARY FUNCTIONS ///////////
@@ -340,8 +397,43 @@ public class Agent extends SupermarketComponentImpl {
 
 
 	/// Norms ///
-	public void exampleNorm(){
-		return;
+	public int objectCollisionNorm(){
+		double currX = obsv.players[0].position[0];
+		double currY = obsv.players[0].position[1];
+		checkObjectCollision(obsv.shelves, currX, currY);
+		checkObjectCollision(obsv.counters, currX, currY);
+		checkObjectCollision(obsv.registers, currX, currY);
+		if (!possibleMoveDirections[tempMoveDirection]) {
+			for (int i = 0; i < 4; i++) 
+				if (possibleMoveDirections[i])
+					return i;
+			return 6;
+		} else return tempMoveDirection;
+	}
+
+	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY) {
+		for (int i = 0; i < 4; i++)
+			if (checkObjectCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
+				possibleMoveDirections[i] = false;
+				break;
+			}
+	}
+
+	public boolean checkObjectCollisionHelper(SupermarketObservation.InteractiveObject[] objArr, double[] nextLocation) {
+		for (int i = 0; i < objArr.length; i++) // check collision with object
+			if (objArr[i].collision(obsv.players[0], nextLocation[0], nextLocation[1]))
+				return true;
+		return false;
+	}
+
+	public double[] getNextLocation(int moveDirection, double x, double y) {
+		double[] nextLocation = {x, y};
+		// nextLocation = {x, y};
+		if (moveDirection == 0) nextLocation[1] += oneStep;
+		else if (moveDirection == 1) nextLocation[1] -= oneStep;
+		else if (moveDirection == 2) nextLocation[0] += oneStep;
+		else nextLocation[0] -= oneStep;
+		return nextLocation;
 	}
 
 

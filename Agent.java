@@ -45,8 +45,8 @@ public class Agent extends SupermarketComponentImpl {
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
-	int tempMoveDirection;
 	boolean[] possibleMoveDirections = {true, true, true, true};
+	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
 
 	//print statements on/off
 	boolean printPlayerLocation = false;
@@ -65,8 +65,7 @@ public class Agent extends SupermarketComponentImpl {
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
-		checkNorms();
-		actualMoveDirection = tempMoveDirection;
+		actualMoveDirection = checkNorms();
 
 		//MOVE - move based on moveDirection
 		move(actualMoveDirection);
@@ -91,53 +90,6 @@ public class Agent extends SupermarketComponentImpl {
 			String.valueOf(obsv.players[0].list_quant[i]) + " - " + 
 			obsv.players[0].shopping_list[i]);
 		}
-		/*
-		for (int i = 0; i < obsv.shelves.length; i++) {
-			System.out.println("Shelves");
-			System.out.print(obsv.shelves[i].position[0]);
-			System.out.print(" ");
-			System.out.println(obsv.shelves[i].position[1]);
-			System.out.println(obsv.shelves[i].width);
-			System.out.println(obsv.shelves[i].height);
-		}
-		System.out.println();
-		for (int i = 0; i < obsv.counters.length; i++) {
-			System.out.println("counters");
-			System.out.println(obsv.counters[i].position[0]);
-			System.out.print(" ");
-			System.out.println(obsv.counters[i].position[1]);
-			System.out.println(obsv.counters[i].width);
-			System.out.println(obsv.counters[i].height);
-		}
-		System.out.println();
-		for (int i = 0; i < obsv.registers.length; i++) {
-			System.out.println("registers");
-			System.out.println(obsv.registers[i].position[0]);
-			System.out.print(" ");
-			System.out.println(obsv.registers[i].position[1]);
-			System.out.println(obsv.registers[i].width);
-			System.out.println(obsv.registers[i].height);
-		}
-		System.out.println();
-		for (int i = 0; i < obsv.cartReturns.length; i++) {
-			System.out.println("cartReturns");
-			System.out.println(obsv.cartReturns[i].position[0]);
-			System.out.print(" ");
-			System.out.println(obsv.cartReturns[i].position[1]);
-			System.out.println(obsv.cartReturns[i].width);
-			System.out.println(obsv.cartReturns[i].height);
-		}
-		System.out.println();
-		for (int i = 0; i < obsv.basketReturns.length; i++) {
-			System.out.println("basketReturns");
-			System.out.println(obsv.basketReturns[i].position[0]);
-			System.out.print(" ");
-			System.out.println(obsv.basketReturns[i].position[1]);
-			System.out.println(obsv.basketReturns[i].width);
-			System.out.println(obsv.basketReturns[i].height);
-		}
-		System.out.println();
-		*/
 		setupDone = true;
 	}
 
@@ -190,6 +142,18 @@ public class Agent extends SupermarketComponentImpl {
 					else {
 						isMoving = false;//direction = 4; //Stop, interact
 						System.out.println("Arrived at " + goalLocation);
+						subActionList = initializeSubActionList(currentSubAction);
+						System.out.println("!!!!!!!!!!!!!!!!");
+						System.out.print("shelvepos: ");
+						System.out.print(goalCoordinates[0]);
+						System.out.print("  ");
+						System.out.println(goalCoordinates[1]);
+						if (obsv.carts.length > 0) {
+							System.out.print("cartpos: ");
+							System.out.print(obsv.carts[0].position[0]);
+							System.out.print("  ");
+							System.out.println(obsv.carts[0].position[1]);
+						}
 					}
 				}
 		}
@@ -227,13 +191,14 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Outputs the best moveDirection considering what is ideal and the norms
-	public void checkNorms(){
-		tempMoveDirection = idealMoveDirection;
+	public int checkNorms(){
+		int tempMoveDirection = idealMoveDirection;
 		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
 		if (tempMoveDirection < 4) {
-			tempMoveDirection = objectCollisionNorm();
-		} else return;
-		// return idealMoveDirection;
+			System.out.println("checked");
+			tempMoveDirection = objectCollisionNorm(tempMoveDirection);
+		}
+		return tempMoveDirection;
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -244,9 +209,6 @@ public class Agent extends SupermarketComponentImpl {
 		else if (dir == 3) goWest();
 		else if (dir == 4) {interactWithObject(); sleep(200);}
 		else if (dir == 5) {toggleShoppingCart(); sleep(200);}
-		// System.out.print(obsv.players[0].position[0]);
-		// System.out.print(" ");
-		// System.out.println(obsv.players[0].position[1]);
 	}
 
 	/////////// SECONDARY FUNCTIONS ///////////
@@ -263,17 +225,17 @@ public class Agent extends SupermarketComponentImpl {
 				case "Finding Carts":
 					findCartsCoordinates();
 					currentSubAction = "findCarts";
-					subActionList = initializeSubActionList(currentSubAction);
+					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Shopping":
 					findFoodCoordinates();
 					currentSubAction = "pickUpFoodItem";
-					subActionList = initializeSubActionList(currentSubAction);
+					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Checking Out":
 					findRegisterCoordinates();
 					currentSubAction = "checkOut";
-					subActionList = initializeSubActionList(currentSubAction);
+					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Exiting":
 					findExitCoordinates();
@@ -284,7 +246,7 @@ public class Agent extends SupermarketComponentImpl {
 		else if (currentAction == "Shopping" && goalLocation != obsv.players[0].shopping_list[uniqueItemsInCart]){ 
 			findFoodCoordinates();
 			currentSubAction = "pickUpFoodItem";
-			subActionList = initializeSubActionList(currentSubAction);
+			// subActionList = initializeSubActionList(currentSubAction);
 		}
 	}
 
@@ -336,8 +298,6 @@ public class Agent extends SupermarketComponentImpl {
 		goalLocation = "Register";
 		goalCoordinates = obsv.registers[0].position;
 		goalCoordinates[1] += 2.75;
-		//System.out.println("goal coordinates: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-		//System.out.println("My Coordinates: " + obsv.players[0].position[0] + ", " + obsv.players[0].position[1]);
 	}
 	public void findExitCoordinates() { // This is a little hard-coded, only works at specific register
 		goalLocation = "Exit";
@@ -363,10 +323,11 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(4);
 		} else if (action.equals("pickUpFoodItem")) {
 			subActionList.add(5);
-			for(int i=0; i<7; i++) subActionList.add(0);
+			int stepNum = (int)Math.floor((obsv.players[0].position[1] - goalCoordinates[1] - shelfBuffer) / oneStep) - 1;
+			for(int i=0; i<stepNum; i++) subActionList.add(0);
 			subActionList.add(4);
 			subActionList.add(4);
-			for(int i=0; i<7; i++) subActionList.add(1);
+			for(int i=0; i<stepNum; i++) subActionList.add(1);
 			subActionList.add(-1); // decide on the fly
 			subActionList.add(4);
 			subActionList.add(4);
@@ -397,7 +358,7 @@ public class Agent extends SupermarketComponentImpl {
 
 
 	/// Norms ///
-	public int objectCollisionNorm(){
+	public int objectCollisionNorm(int tempMoveDirection){
 		double currX = obsv.players[0].position[0];
 		double currY = obsv.players[0].position[1];
 		checkObjectCollision(obsv.shelves, currX, currY);

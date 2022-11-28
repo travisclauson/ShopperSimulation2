@@ -40,8 +40,10 @@ public class Agent extends SupermarketComponentImpl {
 	boolean counterItem = false;
 
 	// position constants
-	double yShoppingAdjust = 2.5;
-	double xShoppingAdjust = -1.0;
+	double yShelfAdjust = 2.5;
+	double yCounterAdjust = 2.5;
+	double xShelfAdjust = 1.0;
+	double xCounterAdjust = 1.5;
 	double oneStep = 0.15;
 	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
 	double wallXmin = 0.5;
@@ -62,7 +64,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Custom Scenario
 	boolean customShoppingList = false;
-	String customFoodItem = "milk"; //"brie cheese";
+	String customFoodItem = "prepared foods"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerCoordinates = false;
@@ -213,10 +215,10 @@ public class Agent extends SupermarketComponentImpl {
 		interactionCancellationNorm();
 		cartTheftNorm();
 		onlyOneCartNorm();
+		//wrongShelfNorm(); //not perfected yet
 		entranceOnlyNorm();
 		unattendedCartNorm();
 		personalSpaceNorm();
-		wrongShelfNorm();
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -274,10 +276,6 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(){
-		double yShelfAdjust = 2.5;
-		double yCounterAdjust = 2.5;
-		double xShelfAdjust = -1.0;
-		double xCounterAdjust = 1.5;
 		String desiredFoodItem;
 		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
 
@@ -297,7 +295,7 @@ public class Agent extends SupermarketComponentImpl {
 				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
 					if (obsv.shelves[i].food_name.equals(goalLocation)) {
 						goalCoordinates = obsv.shelves[i].position;
-						adjustedGoalCoordinates[0] = goalCoordinates[0] - xShelfAdjust;
+						adjustedGoalCoordinates[0] = goalCoordinates[0] + xShelfAdjust;
 						adjustedGoalCoordinates[1] = goalCoordinates[1] + yShelfAdjust;
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						shelfItem = true;
@@ -415,7 +413,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	/////////////////////////// NORMS ///////////////////////////
 	public void wallCollisionNorm(){
-		int normIndex = 1;
+		int normIndex = 0;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
 		possibleMoveDirections[normIndex][0] = getNextLocation(0, currX, currY)[1] > wallYmin;
@@ -429,7 +427,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void objectCollisionNorm(){
-		int normIndex = 2;
+		int normIndex = 1;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
 		checkObjectCollision(obsv.shelves, currX, currY, "object", normIndex);
@@ -439,7 +437,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void playerCollisionNorm(){ // player collision and personal space norm
-		int normIndex = 3;
+		int normIndex = 2;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
 		checkObjectCollision(obsv.players, currX, currY, "player", normIndex);
@@ -447,7 +445,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void interactionCancellationNorm() {
-		int normIndex = 4;
+		int normIndex = 3;
 		if (currentSubAction == "checkOut")
 			if (subActionList.size() >= checkOutCancelationThreshold[0]
 			&& subActionList.size() <= checkOutCancelationThreshold[1])
@@ -459,13 +457,13 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void cartTheftNorm() {
-		int normIndex = 5;
+		int normIndex = 4;
 		if (idealMoveDirection == 5)
 			return; //Not sure how to check the index of a cart before I toggle it
 	}
 
 	public void onlyOneCartNorm() {
-		int normIndex = 6;
+		int normIndex = 5;
 		if (obsv.players[playerIndex].curr_cart != -1 && obsv.atCartReturn(playerIndex)){
 			possibleMoveDirections[normIndex][4] = false;
 			//System.out.println("Can't grab cart");
@@ -473,7 +471,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void shopliftingNorm() {
-		int normIndex = 7;
+		int normIndex = 6;
 		if (currentAction == "Exiting")
 			if (obsv.carts[cartIndex].purchased_contents != obsv.carts[cartIndex].contents){
 				possibleMoveDirections[normIndex][3] = false;
@@ -482,11 +480,31 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void wrongShelfNorm() {
-		int normIndex = 8;
+		int normIndex = 7;
+		double shelfCoordinates [] = {0.0,0.0};
+		double xPos = obsv.players[playerIndex].position[0];
+		double yPos = obsv.players[playerIndex].position[1];
+		String item = obsv.players[playerIndex].holding_food;
+		if (item != null){
+			for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
+				if (obsv.shelves[i].food_name.equals(item)) {
+					shelfCoordinates = obsv.shelves[i].position;
+				}
+			}
+			for (int i=0; i<obsv.counters.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
+				if (obsv.counters[i].food.equals(item)) {
+					shelfCoordinates = obsv.counters[i].position;
+				}
+			}
+			double xError = Math.abs(xPos - (shelfCoordinates[0]+ xShelfAdjust));
+			double yError = Math.abs(yPos - (shelfCoordinates[1]+ yShelfAdjust));
+			if ( xError > 3.0 || yError > 3.0)
+				possibleMoveDirections[normIndex][4] = false;
+		}
 	}
 
 	public void entranceOnlyNorm(){
-
+		//to be implemented
 	}
 
 	public void unattendedCartNorm(){
@@ -494,7 +512,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public void personalSpaceNorm(){
-
+		//to be implemented
 	}
 
 
@@ -542,6 +560,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	public int decideActualAction(){
+		ArrayList<Integer> brokenNorms = new ArrayList<Integer>();
 		int tempMoveDirection = 6;
 		int count =1;
 		//intialize the summed array
@@ -551,8 +570,11 @@ public class Agent extends SupermarketComponentImpl {
 			if(printAllNormResults) System.out.print("\nAction " + i + ": ");
 			count = 1;
 			for (boolean[] norm : possibleMoveDirections){
-				if (norm[i] == false) //if any norms violate a certain direction, set that sumPossibleDirection false
+				if (norm[i] == false) {//if any norms violate a certain direction, set that sumPossibleDirection false
 					summedPossibleMoveDirections[i] = false;
+					if (i == idealMoveDirection)
+						brokenNorms.add(count-1);//hacky fix
+				}
 				if(printAllNormResults) 
 					System.out.print(" " + count + ":" + norm[i] + " ");
 				count++;
@@ -565,7 +587,7 @@ public class Agent extends SupermarketComponentImpl {
 		}
 
 		else{
-			System.out.println("Ideal action " + idealMoveDirection + " breaks norm");
+			System.out.println("Ideal action " + idealMoveDirection + " breaks norms: " + brokenNorms);
 			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;

@@ -26,6 +26,7 @@ public class Agent extends SupermarketComponentImpl {
 	int actualMoveDirection;
 	int count = 0;
 	double[] goalCoordinates = {0.0,0.0};
+	double[] adjustedGoalCoordinates = {0.0,0.0};
 	String goalLocation = "";
 	String currentAction = "";
 	boolean setupDone = false;
@@ -55,10 +56,11 @@ public class Agent extends SupermarketComponentImpl {
 	String customFoodItem = "brie cheese";
 
 	//print statements on/off
-	boolean printPlayerLocation = false;
-	boolean printGoalLocation = false;
+	boolean printPlayerCoordinates = false;
+	boolean printGoalShelfCoordinates = false;
 	boolean printLoop = false;
 	boolean printLocationError = false;
+	boolean printCartPosition = false;
 	DecimalFormat df = new DecimalFormat("##.##");
 
 
@@ -115,10 +117,10 @@ public class Agent extends SupermarketComponentImpl {
 			double xPos = obsv.players[playerIndex].position[0];
 			double yPos = obsv.players[playerIndex].position[1];
 
-			double xError = xPos - goalCoordinates[0];
-			double yError = yPos - goalCoordinates[1];
+			double xError = xPos - adjustedGoalCoordinates[0];
+			double yError = yPos - adjustedGoalCoordinates[1];
 
-			if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
+			if (printPlayerCoordinates) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
 			if (printLocationError) System.out.println("Error: X: " + df.format(xError) + "  Y: " + df.format(yError));	
 			if(obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
 				if (yError > -.5) direction = 0; //North
@@ -139,12 +141,14 @@ public class Agent extends SupermarketComponentImpl {
 						isMoving = false;//direction = 4; //Stop, interact
 						System.out.println("Arrived at " + goalLocation);
 						subActionList = initializeSubActionList(currentSubAction);
-						System.out.println("!!!!!!!!!!!!!!!!");
-						System.out.print("shelvepos: ");
-						System.out.print(goalCoordinates[0]);
-						System.out.print("  ");
-						System.out.println(goalCoordinates[1]);
-						if (obsv.carts.length > 0) {
+						//System.out.println("!!!!!!!!!!!!!!!!");
+						if (printGoalShelfCoordinates){ //actual coordinates, not adjusted
+							System.out.print("Shelf Coordinates: ");
+							System.out.print(goalCoordinates[0]);
+							System.out.print("  ");
+							System.out.println(goalCoordinates[1]);
+						}
+						if (obsv.carts.length > 0 && printCartPosition) {
 							System.out.print("cartpos: ");
 							System.out.print(obsv.carts[0].position[0]);
 							System.out.print("  ");
@@ -251,6 +255,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void findCartsCoordinates () {
 		goalLocation = "Carts";
 		goalCoordinates = obsv.cartReturns[0].position;
+		adjustedGoalCoordinates = goalCoordinates;
 	}
 
 	//Detirmine Coordinates of the goal location
@@ -278,8 +283,8 @@ public class Agent extends SupermarketComponentImpl {
 				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
 					if (obsv.shelves[i].food_name.equals(goalLocation)) {
 						goalCoordinates = obsv.shelves[i].position;
-						goalCoordinates[0]-=xShelfAdjust;
-						goalCoordinates[1]+=yShelfAdjust;
+						adjustedGoalCoordinates[0] = goalCoordinates[0] - xShelfAdjust;
+						adjustedGoalCoordinates[1] = goalCoordinates[1] + yShelfAdjust;
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						shelfItem = true;
 						counterItem = false;
@@ -292,8 +297,8 @@ public class Agent extends SupermarketComponentImpl {
 				for (int i = 0; i<obsv.counters.length; i++){
 					if (obsv.counters[i].food.equals(goalLocation)) {
 						goalCoordinates = obsv.counters[i].position;
-						goalCoordinates[0]-=xCounterAdjust;
-						goalCoordinates[1]+=yCounterAdjust;
+						adjustedGoalCoordinates[0] = goalCoordinates[0] - xCounterAdjust;
+						adjustedGoalCoordinates[1] = goalCoordinates[1] + yCounterAdjust;
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						shelfItem = false;
 						counterItem = true;
@@ -310,13 +315,16 @@ public class Agent extends SupermarketComponentImpl {
 	public void findRegisterCoordinates () {
 		goalLocation = "Register";
 		goalCoordinates = obsv.registers[0].position;
-		goalCoordinates[1] += 3.25;
+		adjustedGoalCoordinates[0] = goalCoordinates[0];
+		adjustedGoalCoordinates[1] = goalCoordinates[1] + 3.25;
 		System.out.println("Register: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 		//System.out.println("My Coordinates: " + obsv.players[playerIndex].position[0] + ", " + obsv.players[playerIndex].position[1]);
 	}
-	public void findExitCoordinates() { // This is a little hard-coded, only works at specific register
+	public void findExitCoordinates() {
 		goalLocation = "Exit";
 		goalCoordinates[0] = -2;
+		adjustedGoalCoordinates[0] = goalCoordinates[0];
+		System.out.println("Exit: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 	}
 
 	 // Interact with object, then update new goal

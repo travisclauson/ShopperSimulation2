@@ -46,7 +46,7 @@ public class Agent extends SupermarketComponentImpl {
 	double wallXmax = 18.89;
 	double wallYmin = 2.1;
 	double wallYmax = 24.1;
-	double checkOutAdjust = 0.5;
+	double exitX = -2;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -60,7 +60,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Custom Scenario
 	boolean customShoppingList = false;
-	String customFoodItem = "brie cheese";
+	String customFoodItem = "milk"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerLocation = false;
@@ -126,6 +126,8 @@ public class Agent extends SupermarketComponentImpl {
 			double yError = yPos - goalCoordinates[1];
 
 			if (printPlayerLocation) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
+			if (printPlayerLocation) System.out.println("Goal Location: " + df.format(goalCoordinates[0]) + ", " + df.format(goalCoordinates[1]));
+
 			if (printLocationError) System.out.println("Error: X: " + df.format(xError) + "  Y: " + df.format(yError));	
 			if (obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
 				if (yError > -.5) direction = 0; //North
@@ -316,7 +318,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 	public void findExitCoordinates() { // This is a little hard-coded, only works at specific register
 		goalLocation = "Exit";
-		goalCoordinates = [-2, goalCoordinates[1] + checkOutAdjust];
+		goalCoordinates[0] = exitX;
 	}
 
 	 // Interact with object, then update new goal
@@ -351,8 +353,10 @@ public class Agent extends SupermarketComponentImpl {
 		} 
 		else if (action.equals("checkOut")) {
 			subActionList.add(5);
-			subActionList.add(0);
-			subActionList.add(0);
+			// need fix or sometimes player run into register. 
+			// Seems like to happen when check out after pick up an object that is located above the register.
+			int stepNum = 2; //(int)floor((obsv.players[playerIndex].position[1] - goalCoordinates[1]) / oneStep);
+			for (int i = 0; i < 2; i++) subActionList.add(0);
 			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(3);
@@ -391,7 +395,8 @@ public class Agent extends SupermarketComponentImpl {
 		possibleMoveDirections[0] = getNextLocation(0, currX, currY)[1] > wallYmin;
 		possibleMoveDirections[1] = getNextLocation(1, currX, currY)[1] < wallYmax;
 		possibleMoveDirections[2] = getNextLocation(2, currX, currY)[0] < wallXmax;
-		possibleMoveDirections[3] = getNextLocation(3, currX, currY)[0] > wallXmin;
+		if (currentAction != "Exiting") possibleMoveDirections[3] = getNextLocation(3, currX, currY)[0] > wallXmin;
+		else possibleMoveDirections[3] = getNextLocation(3, currX, currY)[0] > exitX;
 		return;
 	}
 

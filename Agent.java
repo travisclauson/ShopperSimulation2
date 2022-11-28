@@ -38,12 +38,15 @@ public class Agent extends SupermarketComponentImpl {
 	// position constants
 	double yShoppingAdjust = 2.5;
 	double xShoppingAdjust = -1.0;
+	double oneStep = 0.15;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
+	boolean[] possibleMoveDirections = {true, true, true, true};
+	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
 
 	//Custom Scenario
 	boolean customShoppingList = false;
@@ -93,7 +96,6 @@ public class Agent extends SupermarketComponentImpl {
 			String.valueOf(obsv.players[0].list_quant[i]) + " - " + 
 			obsv.players[0].shopping_list[i]);
 		}
-
 		setupDone = true;
 	}
 
@@ -132,6 +134,18 @@ public class Agent extends SupermarketComponentImpl {
 					else {
 						isMoving = false;//direction = 4; //Stop, interact
 						System.out.println("Arrived at " + goalLocation);
+						subActionList = initializeSubActionList(currentSubAction);
+						System.out.println("!!!!!!!!!!!!!!!!");
+						System.out.print("shelvepos: ");
+						System.out.print(goalCoordinates[0]);
+						System.out.print("  ");
+						System.out.println(goalCoordinates[1]);
+						if (obsv.carts.length > 0) {
+							System.out.print("cartpos: ");
+							System.out.print(obsv.carts[0].position[0]);
+							System.out.print("  ");
+							System.out.println(obsv.carts[0].position[1]);
+						}
 					}
 				}
 		}
@@ -170,8 +184,13 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Outputs the best moveDirection considering what is ideal and the norms
 	public int checkNorms(){
-		exampleNorm();
-		return idealMoveDirection;
+		int tempMoveDirection = idealMoveDirection;
+		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
+		if (tempMoveDirection < 4) {
+			System.out.println("checked");
+			tempMoveDirection = objectCollisionNorm(tempMoveDirection);
+		}
+		return tempMoveDirection;
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -198,18 +217,18 @@ public class Agent extends SupermarketComponentImpl {
 				case "Finding Carts":
 					findCartsCoordinates();
 					currentSubAction = "findCarts";
-					subActionList = initializeSubActionList(currentSubAction);
+					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Shopping":
 					findFoodCoordinates();
 					if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 					if (counterItem == true) currentSubAction = "pickUpCounterItem";
-					subActionList = initializeSubActionList(currentSubAction);
+					//subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Checking Out":
 					findRegisterCoordinates();
 					currentSubAction = "checkOut";
-					subActionList = initializeSubActionList(currentSubAction);
+					// subActionList = initializeSubActionList(currentSubAction);
 					break;
 				case "Exiting":
 					findExitCoordinates();
@@ -221,7 +240,7 @@ public class Agent extends SupermarketComponentImpl {
 			findFoodCoordinates();
 			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 			if (counterItem == true) currentSubAction = "pickUpCounterItem";
-			subActionList = initializeSubActionList(currentSubAction);
+			//subActionList = initializeSubActionList(currentSubAction);
 		}
 	}
 
@@ -315,10 +334,11 @@ public class Agent extends SupermarketComponentImpl {
 		} 
 		else if (action.equals("pickUpShelfItem")) {
 			subActionList.add(5);
-			for(int i=0; i<7; i++) subActionList.add(0);
+			int stepNum = (int)Math.floor((obsv.players[0].position[1] - goalCoordinates[1] - shelfBuffer) / oneStep) - 1;
+			for(int i=0; i<stepNum; i++) subActionList.add(0);
 			subActionList.add(4);
 			subActionList.add(4);
-			for(int i=0; i<7; i++) subActionList.add(1);
+			for(int i=0; i<stepNum; i++) subActionList.add(1);
 			subActionList.add(-1); // decide on the fly
 			subActionList.add(4);
 			subActionList.add(4);
@@ -360,8 +380,43 @@ public class Agent extends SupermarketComponentImpl {
 
 
 	/// Norms ///
-	public void exampleNorm(){
-		return;
+	public int objectCollisionNorm(int tempMoveDirection){
+		double currX = obsv.players[0].position[0];
+		double currY = obsv.players[0].position[1];
+		checkObjectCollision(obsv.shelves, currX, currY);
+		checkObjectCollision(obsv.counters, currX, currY);
+		checkObjectCollision(obsv.registers, currX, currY);
+		if (!possibleMoveDirections[tempMoveDirection]) {
+			for (int i = 0; i < 4; i++) 
+				if (possibleMoveDirections[i])
+					return i;
+			return 6;
+		} else return tempMoveDirection;
+	}
+
+	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY) {
+		for (int i = 0; i < 4; i++)
+			if (checkObjectCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
+				possibleMoveDirections[i] = false;
+				break;
+			}
+	}
+
+	public boolean checkObjectCollisionHelper(SupermarketObservation.InteractiveObject[] objArr, double[] nextLocation) {
+		for (int i = 0; i < objArr.length; i++) // check collision with object
+			if (objArr[i].collision(obsv.players[0], nextLocation[0], nextLocation[1]))
+				return true;
+		return false;
+	}
+
+	public double[] getNextLocation(int moveDirection, double x, double y) {
+		double[] nextLocation = {x, y};
+		// nextLocation = {x, y};
+		if (moveDirection == 0) nextLocation[1] += oneStep;
+		else if (moveDirection == 1) nextLocation[1] -= oneStep;
+		else if (moveDirection == 2) nextLocation[0] += oneStep;
+		else nextLocation[0] -= oneStep;
+		return nextLocation;
 	}
 
 

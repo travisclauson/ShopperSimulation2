@@ -30,6 +30,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean setupDone = false;
 	int uniqueItemsInCart = 0;
 	ArrayList<String> actionList;
+	int currentShelfIndex = 0;
 	// boolean foundCoordinates = false; // not used
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
@@ -187,7 +188,7 @@ public class Agent extends SupermarketComponentImpl {
 		int tempMoveDirection = idealMoveDirection;
 		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
 		if (tempMoveDirection < 4) {
-			System.out.println("checked");
+			//System.out.println("checked");
 			tempMoveDirection = objectCollisionNorm(tempMoveDirection);
 		}
 		return tempMoveDirection;
@@ -279,6 +280,7 @@ public class Agent extends SupermarketComponentImpl {
 						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						shelfItem = true;
 						counterItem = false;
+						currentShelfIndex = i;
 						return;
 					}
 				}
@@ -334,7 +336,7 @@ public class Agent extends SupermarketComponentImpl {
 		} 
 		else if (action.equals("pickUpShelfItem")) {
 			subActionList.add(5);
-			int stepNum = (int)Math.floor((obsv.players[0].position[1] - goalCoordinates[1] - shelfBuffer) / oneStep) - 1;
+			int stepNum = (int)Math.floor((obsv.players[0].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
 			for(int i=0; i<stepNum; i++) subActionList.add(0);
 			subActionList.add(4);
 			subActionList.add(4);

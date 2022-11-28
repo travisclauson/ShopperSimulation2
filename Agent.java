@@ -55,7 +55,7 @@ public class Agent extends SupermarketComponentImpl {
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
-	boolean[][] possibleMoveDirections = new boolean[4][7]; //4 rows for 4 unique norms
+	boolean[][] possibleMoveDirections = new boolean[11][7]; //11 rows for 11 unique norms, 7 columns for 7 possible actions
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
 	int[] counterCancelationThreshold = {17, 18};
@@ -210,8 +210,13 @@ public class Agent extends SupermarketComponentImpl {
 		wallCollisionNorm();
 		objectCollisionNorm();
 		playerCollisionNorm();
-		// Finally check if interaction is canceled
 		interactionCancellationNorm();
+		cartTheftNorm();
+		onlyOneCartNorm();
+		entranceOnlyNorm();
+		unattendedCartNorm();
+		personalSpaceNorm();
+		wrongShelfNorm();
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -408,7 +413,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 
-	/////////////////////////// Norms ///////////////////////////
+	/////////////////////////// NORMS ///////////////////////////
 	public void wallCollisionNorm(){
 		int normIndex = 1;
 		double currX = obsv.players[playerIndex].position[0];
@@ -453,9 +458,48 @@ public class Agent extends SupermarketComponentImpl {
 		return;
 	}
 
+	public void cartTheftNorm() {
+		int normIndex = 5;
+		if (idealMoveDirection == 5)
+			return; //Not sure how to check the index of a cart before I toggle it
+	}
+
+	public void onlyOneCartNorm() {
+		int normIndex = 6;
+		if (obsv.players[playerIndex].curr_cart != -1 && obsv.atCartReturn(playerIndex)){
+			possibleMoveDirections[normIndex][4] = false;
+			//System.out.println("Can't grab cart");
+		}
+	}
+
+	public void shopliftingNorm() {
+		int normIndex = 7;
+		if (currentAction == "Exiting")
+			if (obsv.carts[cartIndex].purchased_contents != obsv.carts[cartIndex].contents){
+				possibleMoveDirections[normIndex][3] = false;
+				actionList.add("Checking Out");
+			}
+	}
+
+	public void wrongShelfNorm() {
+		int normIndex = 8;
+	}
+
+	public void entranceOnlyNorm(){
+
+	}
+
+	public void unattendedCartNorm(){
+		//to be implemented
+	}
+
+	public void personalSpaceNorm(){
+
+	}
 
 
-	// Norm helper functions
+	/////////////////////////// NORM HELPER FUNCTIONS ///////////////////////////
+
 	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY, String type, int normIndex) {
 		for (int i = 0; i < 4; i++) //only need to check for collisions for the 4 moving commands
 			if (type == "object")
@@ -504,13 +548,13 @@ public class Agent extends SupermarketComponentImpl {
 		boolean[] summedPossibleMoveDirections = {true, true, true, true, true, true, true};
 
 		for (int i = 0; i < possibleMoveDirections[0].length; i++){ //Fill in the summed array
-			if(printAllNormResults) System.out.print("\nDirection " + i + ": ");
+			if(printAllNormResults) System.out.print("\nAction " + i + ": ");
 			count = 1;
 			for (boolean[] norm : possibleMoveDirections){
 				if (norm[i] == false) //if any norms violate a certain direction, set that sumPossibleDirection false
 					summedPossibleMoveDirections[i] = false;
 				if(printAllNormResults) 
-					System.out.print("Norm " + count + ": " + norm[i] + "  ");
+					System.out.print(" " + count + ":" + norm[i] + " ");
 				count++;
 			}
 		}
@@ -521,7 +565,7 @@ public class Agent extends SupermarketComponentImpl {
 		}
 
 		else{
-			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
+			System.out.println("Ideal action " + idealMoveDirection + " breaks norm");
 			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;

@@ -5,6 +5,7 @@
 // It should work for any food items except the back counters
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.lang.Math;
 import java.util.Scanner;
 import com.supermarket.*;
@@ -48,7 +49,7 @@ public class Agent extends SupermarketComponentImpl {
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
 	int cartIndex = 0;
-	boolean[] possibleMoveDirections = {true, true, true, true};
+	boolean[][] possibleMoveDirections = new boolean[2][7]; //each row represents a different norm
 	double shelfBuffer = 1; // for avoid collision while pick up item from shelf
 
 	//Custom Scenario
@@ -61,6 +62,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean printLoop = false;
 	boolean printLocationError = false;
 	boolean printCartPosition = false;
+	boolean printAllNormResults = false;
 	DecimalFormat df = new DecimalFormat("##.##");
 
 
@@ -74,7 +76,8 @@ public class Agent extends SupermarketComponentImpl {
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
-		actualMoveDirection = checkNorms();
+		checkNorms();
+		actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
 
 		//MOVE - move based on moveDirection
 		move(actualMoveDirection);
@@ -191,14 +194,16 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Outputs the best moveDirection considering what is ideal and the norms
-	public int checkNorms(){
-		int tempMoveDirection = idealMoveDirection;
-		for (int i = 0; i < 4; i++) possibleMoveDirections[i] = true;
-		if (tempMoveDirection < 4) {
+	public void checkNorms(){
+		int tempMoveDirection;
+		// intialize each move direciton as true
+		for (boolean[] row: possibleMoveDirections)
+    		Arrays.fill(row, true);
+
+		if (idealMoveDirection < 4) {
 			//System.out.println("checked");
-			tempMoveDirection = objectCollisionNorm(tempMoveDirection);
+			objectCollisionNorm(idealMoveDirection);
 		}
-		return tempMoveDirection;
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
@@ -397,25 +402,22 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 
-	/// Norms ///
-	public int objectCollisionNorm(int tempMoveDirection){
+	/////////// NORM FUNCTIONS ///////////
+
+	// Norm 1
+	public void objectCollisionNorm(int tempMoveDirection){ //checks for shelves, counters, and registers
+		int collisionNorm = 1;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
-		checkObjectCollision(obsv.shelves, currX, currY);
-		checkObjectCollision(obsv.counters, currX, currY);
-		checkObjectCollision(obsv.registers, currX, currY);
-		if (!possibleMoveDirections[tempMoveDirection]) {
-			for (int i = 0; i < 4; i++) 
-				if (possibleMoveDirections[i])
-					return i;
-			return 6;
-		} else return tempMoveDirection;
+		checkObjectCollision(obsv.shelves, currX, currY, collisionNorm);
+		checkObjectCollision(obsv.counters, currX, currY, collisionNorm);
+		checkObjectCollision(obsv.registers, currX, currY, collisionNorm);
 	}
 
-	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY) {
+	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY, int normIndex) {
 		for (int i = 0; i < 4; i++)
 			if (checkObjectCollisionHelper(objArr, getNextLocation(i, currX, currY))) {
-				possibleMoveDirections[i] = false;
+				possibleMoveDirections[normIndex][i] = false;
 				break;
 			}
 	}
@@ -435,5 +437,44 @@ public class Agent extends SupermarketComponentImpl {
 		else if (moveDirection == 2) nextLocation[0] += oneStep;
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
+	}
+
+	public int decideActualAction(){
+		int tempMoveDirection = 6;
+		int count =1;
+		boolean[] summedPossibleMoveDirections = new boolean[possibleMoveDirections[0].length];
+		for (int j = 0; j<summedPossibleMoveDirections.length; j++) 
+			summedPossibleMoveDirections[j] = true;
+
+		for (int i = 0; i < possibleMoveDirections[0].length; i++){
+			if(printAllNormResults) System.out.print("\nDirection " + i + ": ");
+			count = 1;
+			for (boolean[] norm : possibleMoveDirections){
+				if (norm[i] == false) {//if any norms violate a certain direction, set that sumPossibleDirection false
+					summedPossibleMoveDirections[i] = false;
+				}
+				if(printAllNormResults) System.out.print("Norm " + count + ": " + norm[i] + "  ");
+				count++;
+			}
+		}
+		
+		if (summedPossibleMoveDirections[idealMoveDirection]){
+			if(printAllNormResults) System.out.println("Ideal direction: " + idealMoveDirection + " is valid");
+			return idealMoveDirection;
+		}
+
+		else{
+			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
+			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
+				if(summedPossibleMoveDirections[j]){
+					tempMoveDirection = j;
+					System.out.println("Settled for a new direction: " + tempMoveDirection);
+					return tempMoveDirection;
+				}
+			}
+		}
+
+		System.out.println("No actions are allowed at the moment");
+		return 6;
 	}
 }

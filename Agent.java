@@ -53,7 +53,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean printPlayerLocation = false;
 	boolean printGoalLocation = false;
 	boolean printLoop = false;
-	boolean printLocationError = true;
+	boolean printLocationError = false;
 	DecimalFormat df = new DecimalFormat("##.##");
 
 
@@ -328,8 +328,6 @@ public class Agent extends SupermarketComponentImpl {
 			subActionList.add(5);
 			subActionList.add(0);
 			subActionList.add(0);
-			subActionList.add(0);
-			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(4);
 			subActionList.add(3);

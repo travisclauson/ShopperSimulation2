@@ -88,7 +88,7 @@ public class Agent extends SupermarketComponentImpl {
 		actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
 
 		//MOVE - move based on moveDirection
-		move(actualMoveDirection);
+		act(actualMoveDirection);
 		count+=1;
 	}
 
@@ -215,7 +215,7 @@ public class Agent extends SupermarketComponentImpl {
 	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
-	public void move(int dir){
+	public void act(int dir){
 		if (dir == 0) goNorth();
 		else if (dir == 1) goSouth(); 
 		else if (dir == 2) goEast(); 
@@ -240,10 +240,7 @@ public class Agent extends SupermarketComponentImpl {
 					currentSubAction = "findCarts";
 					break;
 				case "Shopping":
-					findFoodCoordinates();
-					if (shelfItem == true) currentSubAction = "pickUpShelfItem";
-					if (counterItem == true) currentSubAction = "pickUpCounterItem";
-					break;
+					break; //see if statement below
 				case "Checking Out":
 					findRegisterCoordinates();
 					currentSubAction = "checkOut";
@@ -254,7 +251,7 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		// If we're shopping but need to look for a new item
-		else if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]) { 
+		if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]) { 
 			findFoodCoordinates();
 			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
 			if (counterItem == true) currentSubAction = "pickUpCounterItem";
@@ -409,6 +406,7 @@ public class Agent extends SupermarketComponentImpl {
 
 
 	/////////////////////////// Norms ///////////////////////////
+	
 	public void wallCollisionNorm(){
 		int normIndex = 1;
 		double currX = obsv.players[playerIndex].position[0];

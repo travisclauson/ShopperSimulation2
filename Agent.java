@@ -38,6 +38,7 @@ public class Agent extends SupermarketComponentImpl {
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
 	boolean counterItem = false;
+	boolean usingAlternatePath = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -226,6 +227,60 @@ public class Agent extends SupermarketComponentImpl {
 
 	/////////// SECONDARY FUNCTIONS ///////////
 
+	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
+		ArrayList <String> pathGoalList = new ArrayList<String>();
+		ArrayList <int[]> pathGoalCordinates = new ArrayList<int[]>();
+		String currentPlanLocation = "";
+		while(currentPlanLocation != "Final Goal Location"){
+			switch (currentPlanLocation){
+				case ("Wrong Aisle"):
+					int hub = whichHubToUse();
+					pathGoalList.add("Aisle Hub " + hub);
+					if (hub == 1) pathGoalCordinates.add({4.25, lastY}); //4.25 is the middle of the front hub, then use the last Y value set since just walking north/south
+					else pathGoalCordinates.add({16.25, lastY});//16.25 is the middle of the rear hub
+					currentPlanLocation = "Aisle Hub";
+
+				case ("Aisle Hub"):
+					pathGoalList.add("Aisle " + getAisleNum());
+					currentPlanLocation = "Correct Aisle";
+					//pathGoalCoordinates.add()
+
+				case ("Correct Aisle"):
+					pathGoalList.add("Goal Location");
+					currentPlanLocation = "Final Goal Location";
+					//pathGoalCoordinates.add()
+
+				case ("Front of Store"):
+					pathGoalList.add("Aisle Hub 1");
+					currentPlanLocation = "Aisle Hub";
+					//pathGoalCoordinates.add()
+
+				case ("Back of Store"):
+					pathGoalList.add("Aisle Hub 2");
+					currentPlanLocation = "Aisle Hub";
+					//pathGoalCoordinates.add()
+			}
+		}
+	}
+
+	public int whichHubToUse(){
+		double xPos = obsv.players[playerIndex].position[0];
+
+		if (!usingAlternatePath) {//when nothing is blocking our path (normal scenario) use closest aisle hub
+			if(xPos < 16) return 1; //Left Aisle Hub (1)
+			else return 2; //Right Aisle Hub
+		}
+		else { //Use opposite aisle hub
+			if(xPos < 16) return 2; 
+			else return 1;
+		}
+	}
+
+	public int getAisleNum(){ //Look at the goal Coordinates and detirmine which aisle to go to
+		return 0;
+	}
+
+
 	//Discover what our goal location is: exit, shelf x, register etc.
 	public void setGoalLocation() {
 		hasGoal = true;
@@ -406,7 +461,7 @@ public class Agent extends SupermarketComponentImpl {
 
 
 	/////////////////////////// Norms ///////////////////////////
-	
+
 	public void wallCollisionNorm(){
 		int normIndex = 1;
 		double currX = obsv.players[playerIndex].position[0];

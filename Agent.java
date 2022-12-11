@@ -236,6 +236,7 @@ public class Agent extends SupermarketComponentImpl {
 
 		int goalAisle = getAisleIndex(goalCoordinates);
 		int currentAisle = getAisleIndex(currentCoordinates);
+		if (goalAisle == 0 && currentAisle == 0) return "";
 		if (goalAisle == currentAisle) return "Correct Aisle";
 		return "";
 	}
@@ -281,7 +282,19 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public int getAisleIndex(double coordinates[]){ //Look at the goal Coordinates and detirmine which aisle to go to
+	public int getAisleIndex(double coordinates[]){ //returns the region of the store of the coordinates given
+		// 1-6  = Aisles top->bottom, 7 = front of store, 8 = Front Hub, 9 = Back Hub, 10 = Back of Store
+		double xPos = coordinates[0];
+		double yPos = coordinates[1];
+		if (xPos > 5.5 && xPos < 14.5) //in an aisle
+			for (int i = 1; i <= 6; i++) 
+				if (obsv.inAisle(playerIndex, i)) return i;
+		else if(xPos <= 3.75) return 7;
+		else if(obsv.inAisleHub(playerIndex)) return 8;
+		else if(obsv.inRearAisleHub(playerIndex)) return 9;
+		else if(xPos >= 16.5) return 10;
+
+		System.out.println("Get Aisle Index Failed");
 		return 0;
 	}
 

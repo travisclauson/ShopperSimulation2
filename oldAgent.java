@@ -51,7 +51,6 @@ public class Agent extends SupermarketComponentImpl {
 	double wallYmin = 2.1;
 	double wallYmax = 24.1;
 	double exitX = -2;
-	double aisleHeight = 4;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -62,7 +61,6 @@ public class Agent extends SupermarketComponentImpl {
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
 	int[] counterCancelationThreshold = {17, 18};
-    int collisionPlayerIndex = -1;
 
 	//Custom Scenario
 	boolean customShoppingList = false;
@@ -124,19 +122,124 @@ public class Agent extends SupermarketComponentImpl {
 	//Decide what our ideal action is
 	public int decideIdealAction(){ 
 		int direction = 6;
-		if (pathGoalList.isEmpty()) { // TODO: generate queue based on current action
+		if (pathGoalList.isEmpty()) { // generate queue based on current action
 			switch (actionList.get(0)) {
 				case "Finding Carts":
 					break;
-				case "Shopping": // TODO: check if finish list, if not generate new shopping queue
+				case "Shopping":
 					break;
 				case "Checking Out":
 					break;
 				case "Exiting":
 					break; 
+		}
+		if (true) {
+			switch pathGoalList[0] {
+				case "Aisle": 
+					if (pathGoalCoordinates[0][1] > playerCoordinates[1]) direction = 1;
+					else direction = 0;
+					break;
+				case "Aisle Hub":
+					if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+					else direction = 3;
+					break;
+				case "Goal Location":
+					if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+					else direction = 3;
+					break;
+				case "toggle"
+					direction = 5;
+					break;
+				case "interact"
+					direction = 4;
+					break;
+				default:
+					direction = 6;
+					break;
+			}
+		} 
+
+
+
+		/*
+		if (isMoving) {
+			if (!hasGoal) setGoalLocation();
+
+			double xPos = obsv.players[playerIndex].position[0];
+			double yPos = obsv.players[playerIndex].position[1];
+
+			double xError = xPos - adjustedGoalCoordinates[0];
+			double yError = yPos - adjustedGoalCoordinates[1];
+
+			if (printPlayerCoordinates) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
+			if (printLocationError) System.out.println("Error: X: " + df.format(xError) + "  Y: " + df.format(yError));	
+			if (obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
+				if (yError > -.5) direction = 0; //North
+				else if (yError < -.75) direction = 1; //South
+				else if (xError < -.25) direction = 2; //East
+				else if (xError > .5) direction = 3; //West
+			}
+
+			else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
+				if(xPos < 4 || (xPos > 10 && xPos < 16)) direction = 2; //East
+				else direction = 3; //West
+			}
+
+				else { //we're in right aisle
+					if( xError < -.5) direction = 2; // Walk East
+					else if (xError > .5) direction = 3; //Walk West
+					else {
+						isMoving = false;//direction = 4; //Stop, interact
+						System.out.println("Arrived at " + goalLocation);
+						subActionList = initializeSubActionList(currentSubAction);
+						//System.out.println("!!!!!!!!!!!!!!!!");
+						if (printGoalShelfCoordinates){ //actual coordinates, not adjusted
+							System.out.print("Shelf Coordinates: ");
+							System.out.print(goalCoordinates[0]);
+							System.out.print("  ");
+							System.out.println(goalCoordinates[1]);
+						}
+						if (obsv.carts.length > 0 && printCartPosition) {
+							System.out.print("cartpos: ");
+							System.out.print(obsv.carts[0].position[0]);
+							System.out.print("  ");
+							System.out.println(obsv.carts[0].position[1]);
+						}
+					}
+				}
+		}
+
+		else { //not moving
+			if (subActionList.size() > 0) {
+				direction = subActionList.get(0);
+				direction = direction < 0 ? obsv.carts[cartIndex].direction : direction ;
+				subActionList.remove(0);
+				if (subActionList.size() == 0){
+					hasGoal = false; //since we've arrived, we set this false for the next goal
+				}
+			} 
+			else {
+				isMoving = true;
+
+				if (currentAction == "Shopping") {
+					System.out.println("Added " + obsv.players[playerIndex].shopping_list[uniqueItemsInCart] + " to cart\n");
+					System.out.println();
+					if (shoppingListLength >= uniqueItemsInCart+1) { //if there are more items on list
+						System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
+						sleep(100);
+					}
+				} 
+				//Major Action Complete
+				if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart+1) {
+					if (currentAction == "findingCarts") cartIndex = obsv.players[playerIndex].curr_cart;
+					actionList.remove(0);
+					System.out.println(currentAction + " COMPLETED\n");
+					sleep(100);
+				}
 			}
 		}
-		return get_direction_from_goal_list();
+		*/
+		return direction;
 	}
 
 	//Outputs the best moveDirection considering what is ideal and the norms
@@ -220,34 +323,6 @@ public class Agent extends SupermarketComponentImpl {
 					currentPlanLocation = "Aisle Hub";
 			}
 		}
-	}
-
-	public void get_direction_from_goal_list() {
-		int direction = 6;
-		switch pathGoalList.get(0) {
-			case "Aisle": 
-				if (pathGoalCoordinates[0][1] > playerCoordinates[1]) direction = 1;
-				else direction = 0;
-				break;
-			case "Aisle Hub":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
-				else direction = 3;
-				break;
-			case "Goal Location":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
-				else direction = 3;
-				break;
-			case "interact"
-				direction = 4;
-				break;
-			case "toggle"
-				direction = 5;
-				break;
-			default:
-				direction = 6;
-				break;
-		}
-		return direction;
 	}
 
 	public int whichHubToUse(){
@@ -528,13 +603,8 @@ public class Agent extends SupermarketComponentImpl {
 			if (i != playerIndex)
 				if (SupermarketObservation.overlap(playerArr[i].position[0], playerArr[i].position[1], playerArr[i].width,
 						playerArr[i].height, playerArr[playerIndex].position[0], playerArr[playerIndex].position[1],
-						playerArr[playerIndex].width, playerArr[playerIndex].height)) {
-                    collisionPlayerIndex = i;
-                    playerCollisionNormViolated = true;
+						playerArr[playerIndex].width, playerArr[playerIndex].height))
 					return true;
-                }
-        collisionPlayerIndex = -1;
-        playerCollisionNormViolated = false;
 		return false;
 	}
 
@@ -573,20 +643,6 @@ public class Agent extends SupermarketComponentImpl {
 
 		else{
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
-			
-            if (pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list() // generate new queue to walk around, args?
-				// check if valid direction, if yes set direction
-				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
-				// if not valid, do nothing and wait for next loop
-			} else if (pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list() // generate new queue to walk around, args?
-				// check if valid direction, if yes set direction, 
-				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
-				// if not valid, do nothing and wait for next loop
-			} // TODO: other norm solutions
-
-			// if none of the above solution works, randomly pick a direction
 			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;
@@ -600,101 +656,3 @@ public class Agent extends SupermarketComponentImpl {
 		return 6;
 	}
 }
-
-
-
-				// int aisleIdx = 2;
-				// double aisleTop = 0.5 + 4.*(aisleIndex - 1);
-				// double aisleBottom = 0.5 + 4.*aisleIndex;
-				// // find the space above and below the blocking agent, to see if it's possible through
-				// double upperSpace = playerCoordinates[1] - aisleTop; 
-				// double lowerSpace = aisleBottom - playerCoordinates[1];
-				// if (upperSpace >= obsv.players[playerIndex].height) { // can walk through
-				// 	// generate new queue
-				// 	// get the actual direction from the generated queue
-				// 	return 0;
-				// } else { // cannot walk through, walk around instead
-				// 	// generate new queue
-				// 	// get the actual direction from the generated queue
-				// }
-
-
-
-				/*
-		if (isMoving) {
-			if (!hasGoal) setGoalLocation();
-
-			double xPos = obsv.players[playerIndex].position[0];
-			double yPos = obsv.players[playerIndex].position[1];
-
-			double xError = xPos - adjustedGoalCoordinates[0];
-			double yError = yPos - adjustedGoalCoordinates[1];
-
-			if (printPlayerCoordinates) System.out.println("Player Location: " + df.format(xPos) + ", " + df.format(yPos));
-			if (printLocationError) System.out.println("Error: X: " + df.format(xError) + "  Y: " + df.format(yError));	
-			if (obsv.inAisleHub(0) || obsv.inRearAisleHub(0)) { //If I'm in an aisle hub
-				if (yError > -.5) direction = 0; //North
-				else if (yError < -.75) direction = 1; //South
-				else if (xError < -.25) direction = 2; //East
-				else if (xError > .5) direction = 3; //West
-			}
-
-			else if (yError > 1.5 || yError < -1.0 ) { // If we're in wrong aisle
-				if(xPos < 4 || (xPos > 10 && xPos < 16)) direction = 2; //East
-				else direction = 3; //West
-			}
-
-				else { //we're in right aisle
-					if( xError < -.5) direction = 2; // Walk East
-					else if (xError > .5) direction = 3; //Walk West
-					else {
-						isMoving = false;//direction = 4; //Stop, interact
-						System.out.println("Arrived at " + goalLocation);
-						subActionList = initializeSubActionList(currentSubAction);
-						//System.out.println("!!!!!!!!!!!!!!!!");
-						if (printGoalShelfCoordinates){ //actual coordinates, not adjusted
-							System.out.print("Shelf Coordinates: ");
-							System.out.print(goalCoordinates[0]);
-							System.out.print("  ");
-							System.out.println(goalCoordinates[1]);
-						}
-						if (obsv.carts.length > 0 && printCartPosition) {
-							System.out.print("cartpos: ");
-							System.out.print(obsv.carts[0].position[0]);
-							System.out.print("  ");
-							System.out.println(obsv.carts[0].position[1]);
-						}
-					}
-				}
-		}
-
-		else { //not moving
-			if (subActionList.size() > 0) {
-				direction = subActionList.get(0);
-				direction = direction < 0 ? obsv.carts[cartIndex].direction : direction ;
-				subActionList.remove(0);
-				if (subActionList.size() == 0){
-					hasGoal = false; //since we've arrived, we set this false for the next goal
-				}
-			} 
-			else {
-				isMoving = true;
-
-				if (currentAction == "Shopping") {
-					System.out.println("Added " + obsv.players[playerIndex].shopping_list[uniqueItemsInCart] + " to cart\n");
-					System.out.println();
-					if (shoppingListLength >= uniqueItemsInCart+1) { //if there are more items on list
-						System.out.println((shoppingListLength - (uniqueItemsInCart+1)) + " Items Left on Food List");
-						sleep(100);
-					}
-				} 
-				//Major Action Complete
-				if (currentAction != "Shopping" || shoppingListLength <= uniqueItemsInCart+1) {
-					if (currentAction == "findingCarts") cartIndex = obsv.players[playerIndex].curr_cart;
-					actionList.remove(0);
-					System.out.println(currentAction + " COMPLETED\n");
-					sleep(100);
-				}
-			}
-		}
-		*/

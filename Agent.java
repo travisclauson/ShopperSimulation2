@@ -229,36 +229,57 @@ public class Agent extends SupermarketComponentImpl {
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
 		ArrayList <String> pathGoalList = new ArrayList<String>();
-		ArrayList <int[]> pathGoalCordinates = new ArrayList<int[]>();
+		pathGoalList.add("Current Location");
+		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
+		ArrayList <double[]> pathGoalCoordinates = new ArrayList<double[]>();
+		pathGoalCoordinates.add(tempArray);
 		String currentPlanLocation = "";
+
 		while(currentPlanLocation != "Final Goal Location"){
 			switch (currentPlanLocation){
-				case ("Wrong Aisle"):
+				case ("Wrong Aisle"): //update X
 					int hub = whichHubToUse();
 					pathGoalList.add("Aisle Hub " + hub);
-					if (hub == 1) pathGoalCordinates.add({4.25, lastY}); //4.25 is the middle of the front hub, then use the last Y value set since just walking north/south
-					else pathGoalCordinates.add({16.25, lastY});//16.25 is the middle of the rear hub
+					if (hub == 1){
+						tempArray[0] = 4.25;//4.25 is the middle of the front hub, then use the last Y value set since just walking north/south
+						//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
+						pathGoalCoordinates.add(tempArray); 
+					} else {
+						tempArray[0] = 16.25; //16.25 is the middle of the rear hub
+						//tempArray[1] =  pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
+						pathGoalCoordinates.add(tempArray);
+					}
 					currentPlanLocation = "Aisle Hub";
 
-				case ("Aisle Hub"):
-					pathGoalList.add("Aisle " + getAisleNum());
+				case ("Aisle Hub"): //update Y
+					int aisleIndex = getAisleIndex(goalCoordinates);
+					pathGoalList.add("Aisle " + getAisleIndex(goalCoordinates));
+					//tempArray[0] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[0];
+					tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
+					pathGoalCoordinates.add(tempArray);
 					currentPlanLocation = "Correct Aisle";
-					//pathGoalCoordinates.add()
 
-				case ("Correct Aisle"):
+				case ("Correct Aisle"): //update X
 					pathGoalList.add("Goal Location");
 					currentPlanLocation = "Final Goal Location";
-					//pathGoalCoordinates.add()
+					tempArray [0] = adjustedGoalCoordinates[0];
+					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
+					pathGoalCoordinates.add(tempArray);
 
-				case ("Front of Store"):
+				case ("Front of Store"): //update X
 					pathGoalList.add("Aisle Hub 1");
+					tempArray[0] = 4.25;
+					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
+					pathGoalCoordinates.add(tempArray); 
 					currentPlanLocation = "Aisle Hub";
-					//pathGoalCoordinates.add()
 
-				case ("Back of Store"):
+
+				case ("Back of Store"): //update X
 					pathGoalList.add("Aisle Hub 2");
+					tempArray[0] = 16.25;
+					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
+					pathGoalCoordinates.add(tempArray);
 					currentPlanLocation = "Aisle Hub";
-					//pathGoalCoordinates.add()
 			}
 		}
 	}
@@ -276,7 +297,7 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public int getAisleNum(){ //Look at the goal Coordinates and detirmine which aisle to go to
+	public int getAisleIndex(double coordinates[]){ //Look at the goal Coordinates and detirmine which aisle to go to
 		return 0;
 	}
 

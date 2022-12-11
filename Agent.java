@@ -35,11 +35,15 @@ public class Agent extends SupermarketComponentImpl {
 	int uniqueItemsInCart = 0;
 	ArrayList<String> actionList;
 	int currentShelfIndex = 0;
+	ArrayList <String> pathGoalList = new ArrayList<String>();
+	ArrayList <double[]> pathGoalCoordinates = new ArrayList<double[]>();
+
 	// boolean foundCoordinates = false; // not used
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
 	boolean counterItem = false;
 	boolean usingAlternatePath = false;
+	boolean playerCollisionNormViolated = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -52,6 +56,7 @@ public class Agent extends SupermarketComponentImpl {
 	double wallYmax = 24.1;
 	double exitX = -2;
 	double aisleHeight = 4;
+
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -166,12 +171,13 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// SECONDARY FUNCTIONS ///////////
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
-		ArrayList <String> pathGoalList = new ArrayList<String>();
+		System.out.println("Building a Path plan");
+		pathGoalList.clear();
 		pathGoalList.add("Current Location");
 		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
-		ArrayList <double[]> pathGoalCoordinates = new ArrayList<double[]>();
+		pathGoalCoordinates.clear();
 		pathGoalCoordinates.add(tempArray);
-		String currentPlanLocation = "";
+		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, tempArray);
 
 		while(currentPlanLocation != "Final Goal Location"){
 			switch (currentPlanLocation){
@@ -222,25 +228,37 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public void get_direction_from_goal_list() {
+	public String detirmineRelativeLocation(double goalCoordinates[], double currentCoordinates[]) {
+		double xGoal = goalCoordinates[0];
+		double yGoal = goalCoordinates[1];
+		double xPos = currentCoordinates[0];
+		double yPos = currentCoordinates[1];
+
+		int goalAisle = getAisleIndex(goalCoordinates);
+		int currentAisle = getAisleIndex(currentCoordinates);
+		if (goalAisle == currentAisle) return "Correct Aisle";
+		return "";
+	}
+
+	public int get_direction_from_goal_list() {
 		int direction = 6;
-		switch pathGoalList.get(0) {
+		switch (pathGoalList.get(0)) {
 			case "Aisle": 
-				if (pathGoalCoordinates[0][1] > playerCoordinates[1]) direction = 1;
+				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
 				break;
 			case "Aisle Hub":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
 				break;
 			case "Goal Location":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
 				break;
-			case "interact"
+			case "interact":
 				direction = 4;
 				break;
-			case "toggle"
+			case "toggle":
 				direction = 5;
 				break;
 			default:
@@ -575,12 +593,12 @@ public class Agent extends SupermarketComponentImpl {
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
 			
             if (pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list() // generate new queue to walk around, args?
+				tempMoveDirection = get_direction_from_goal_list(); // generate new queue to walk around, args?
 				// check if valid direction, if yes set direction
 				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
 				// if not valid, do nothing and wait for next loop
 			} else if (pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list() // generate new queue to walk around, args?
+				tempMoveDirection = get_direction_from_goal_list(); // generate new queue to walk around, args?
 				// check if valid direction, if yes set direction, 
 				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
 				// if not valid, do nothing and wait for next loop

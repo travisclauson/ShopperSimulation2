@@ -643,6 +643,7 @@ public class Agent extends SupermarketComponentImpl {
 
 		else{
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
+			findActualDirection();
 			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;
@@ -654,5 +655,11 @@ public class Agent extends SupermarketComponentImpl {
 
 		System.out.println("No actions are allowed at the moment");
 		return 6;
+	}
+	public void findActualDirection() {
+		currentState = "aisle"
+		switch currentState {
+			case 
+		}
 	}
 }

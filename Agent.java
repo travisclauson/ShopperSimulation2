@@ -28,6 +28,7 @@ public class Agent extends SupermarketComponentImpl {
 	int count = 0;
 	double[] goalCoordinates = {0.0,0.0};
 	double[] adjustedGoalCoordinates = {0.0,0.0};
+	double[] playerCoordinates = {0.0, 0.0};
 	String goalLocation = "";
 	String currentAction = "";
 	boolean setupDone = false;
@@ -81,7 +82,7 @@ public class Agent extends SupermarketComponentImpl {
 		if (printLoop) System.out.println("Loop: " + Integer.toString(count));
 		
 		//SENSE
-		obsv = getLastObservation();
+		updateLastObservation();
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
@@ -121,6 +122,16 @@ public class Agent extends SupermarketComponentImpl {
 	//Decide what our ideal action is
 	public int decideIdealAction(){ 
 		int direction = 6;
+		if (!pathGoalList.isEmpty()) {
+			switch pathGoalList[0]
+				case "aisle": 
+					if (pathGoalCoordinates[0][1] > playerCoordinates[1])
+						direction = 0;
+					else
+						direction = 1;
+		}
+
+
 
 		if (isMoving) {
 			if (!hasGoal) setGoalLocation();
@@ -528,6 +539,12 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 
+
+	/////////////////////////// Helpers ///////////////////////////
+	public void updateLastObservation(){
+		obsv = getLastObservation();
+		playerCoordinates = obsv.players[playerIndex].position;
+	}
 
 	// Norm helper functions
 	public void checkObjectCollision(SupermarketObservation.InteractiveObject[] objArr, double currX, double currY, String type, int normIndex) {

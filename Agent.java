@@ -51,6 +51,7 @@ public class Agent extends SupermarketComponentImpl {
 	double wallYmin = 2.1;
 	double wallYmax = 24.1;
 	double exitX = -2;
+	double aisleHeight = 4;
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -61,6 +62,7 @@ public class Agent extends SupermarketComponentImpl {
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
 	int[] counterCancelationThreshold = {17, 18};
+    int collisionPlayerIndex = -1;
 
 	//Custom Scenario
 	boolean customShoppingList = false;
@@ -134,7 +136,7 @@ public class Agent extends SupermarketComponentImpl {
 					break; 
 		}
 		if (true) {
-			switch pathGoalList[0] {
+			switch pathGoalList.get(0) {
 				case "Aisle": 
 					if (pathGoalCoordinates[0][1] > playerCoordinates[1]) direction = 1;
 					else direction = 0;
@@ -603,8 +605,13 @@ public class Agent extends SupermarketComponentImpl {
 			if (i != playerIndex)
 				if (SupermarketObservation.overlap(playerArr[i].position[0], playerArr[i].position[1], playerArr[i].width,
 						playerArr[i].height, playerArr[playerIndex].position[0], playerArr[playerIndex].position[1],
-						playerArr[playerIndex].width, playerArr[playerIndex].height))
+						playerArr[playerIndex].width, playerArr[playerIndex].height)) {
+                    collisionPlayerIndex = i;
+                    playerCollisionNormViolated = true;
 					return true;
+                }
+        collisionPlayerIndex = -1;
+        playerCollisionNormViolated = false;
 		return false;
 	}
 
@@ -643,6 +650,26 @@ public class Agent extends SupermarketComponentImpl {
 
 		else{
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
+			
+			
+            if (pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
+				int aisleIdx = 2;
+				double aisleTop = 0.5 + 4.*(aisleIndex - 1);
+				double aisleBottom = 0.5 + 4.*aisleIndex;
+				// find the space above and below the blocking agent, to see if it's possible through
+				double upperSpace = playerCoordinates[1] - aisleTop; 
+				double lowerSpace = aisleBottom - playerCoordinates[1];
+				if (upperSpace >= obsv.players[playerIndex].height) { // can walk through
+					// generate new queue
+					// get the actual direction from the generated queue
+					return 0;
+				} else { // cannot walk through, walk around instead
+					// generate new queue
+					// get the actual direction from the generated queue
+				}
+				
+
+			} else if (pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated)
 			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;

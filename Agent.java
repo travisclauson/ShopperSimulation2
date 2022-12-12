@@ -176,15 +176,19 @@ public class Agent extends SupermarketComponentImpl {
 		for (boolean[] row: possibleMoveDirections) 
 			Arrays.fill(row, true);
 
+		// nomrs for navigation
 		wallCollisionNorm();
 		objectCollisionNorm();
 		playerCollisionNorm();
+
+		// norms for interaction
+		cartTheftNorm();
+
 		// Finally check if interaction is canceled
 		interactionCancellationNorm();
 	}
 
 	public int decideActualAction(){
-		int tempMoveDirection = 6;
 		int count =1;
 		//intialize the summed array
 		boolean[] summedPossibleMoveDirections = {true, true, true, true, true, true, true};
@@ -206,44 +210,38 @@ public class Agent extends SupermarketComponentImpl {
 			return idealMoveDirection;
 		} else {
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
-			
-            if (actionList.get(0) == "Shopping" &&
-				pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
-				
-				// generate new queue to walk around, args?
-				
-				tempMoveDirection = get_direction_from_goal_list();
-				// check if valid direction, if yes set direction
-				if (summedPossibleMoveDirections[tempMoveDirection]) {
-					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
-				}
-				// if not valid, do nothing and wait for next loop
-			} else if (actionList.get(0) == "Shopping" &&
-				pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
-				
-				// generate new queue to walk around, args?
-				
-				tempMoveDirection = get_direction_from_goal_list();
-				// check if valid direction, if yes set direction, 
-				if (summedPossibleMoveDirections[tempMoveDirection]) {
-					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
-				}
-				// if not valid, do nothing and wait for next loop
-			} // TODO: other norm solutions
+			if (idealMoveDirection < 3 && idealMoveDirection > -1)
+				return find_actual_navigation_direction();
+			else {
+				System.out.println("No actions are allowed at the moment");
+				return 6;
+			}
+		}
+	}
 
-			// if none of the above solution works, just pick any valid direction
-			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
+	public int find_actual_navigation_direction () {
+		if (actionList.get(0) == "Shopping" &&
+			pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
+			// generate new queue to walk around, args?
+			tempMoveDirection = get_direction_from_goal_list();
+		} else if (actionList.get(0) == "Shopping" &&
+			pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
+			// generate new queue to walk around, args?
+			tempMoveDirection = get_direction_from_goal_list();
+		} // TODO: other norm solutions
+
+		// check if valid direction, if yes set direction
+		if (!summedPossibleMoveDirections[tempMoveDirection]) {
+			for(int j = 0; j < summedPossibleMoveDirections.length; j++) {
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;
 					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
+				} else {
+					tempMoveDirection = 6;
+					System.out.println("No actions are allowed at the moment");
 				}
 			}
 		}
-
-		System.out.println("No actions are allowed at the moment");
 		return tempMoveDirection;
 	}
 	
@@ -574,6 +572,18 @@ public class Agent extends SupermarketComponentImpl {
 		double currY = obsv.players[playerIndex].position[1];
 		checkObjectCollision(obsv.players, currX, currY, "player", normIndex);
 		return;
+	}
+
+	public void cartTheftNorm() {
+		int normIndex = 4;
+		for (int i = 0; i < obsv.carts.length; i++) {
+			if (!obsv.carts[i].owner == playerIndex) {
+				if(obsv.carts[i].canInteract(obsv.players[playerIndex])) {
+					possibleMoveDirections[normIndex][5] = false;
+					return;
+				}
+			}
+		}
 	}
 
 	public void interactionCancellationNorm() { // TODO: Figure out how to check this

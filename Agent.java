@@ -188,6 +188,7 @@ public class Agent extends SupermarketComponentImpl {
 		// norms for interaction
 		cartTheftNorm();
 		shopliftingNorm();
+		oneCartOnlyNorm();
 
 		// Finally check if interaction is canceled
 		interactionCancellationNorm();
@@ -609,12 +610,20 @@ public class Agent extends SupermarketComponentImpl {
 			if (purchasedCartItemQuant < cartItemQuant) { // if there are unpaid items
 				actionList.add(0, "Checking Out"); // go back to state "Checking out"
 				// re-generate checkout queue
-				for (int i = 0; i < 4; i++) // Set all possible direction to false, and start to check out in next loop
-					possibleMoveDirections[normIndex][i] = false;
+				disable_all_possible_move_direction(normIndex);
 			} else {
 				shopliftingNormChecked = true;
 			}
 		}
+	}
+
+	public void oneCartOnlyNorm() {
+		if (obsv.players[playerIndex].curr_cart >= 0 && obsv.players[playerIndex].curr_cart != cartIndex) {
+			// update queue to return the current cart, find original cart, and continue
+			// (add these two path at the beginning of  the queue)
+			disable_all_possible_move_direction(normIndex);
+		}
+
 	}
 
 	public void interactionCancellationNorm() { // TODO: Figure out how to check this
@@ -682,6 +691,11 @@ public class Agent extends SupermarketComponentImpl {
 		else if (moveDirection == 2) nextLocation[0] += oneStep;
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
+	}
+
+	public void disable_all_possible_move_direction(int normIndex) {
+		for (int i = 0; i < 4; i++) // Set all possible direction to false, and start to check out in next loop
+			possibleMoveDirections[normIndex][i] = false;
 	}
 }
 

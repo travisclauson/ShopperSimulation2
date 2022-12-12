@@ -59,6 +59,7 @@ public class Agent extends SupermarketComponentImpl {
 	double wallYmax = 24.1;
 	double exitX = -2;
 	double aisleHeight = 4;
+
 	// state constants
 	boolean isMoving = true;
 	boolean hasGoal = false;
@@ -264,7 +265,7 @@ public class Agent extends SupermarketComponentImpl {
 		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
 		pathGoalCoordinates = new ArrayList<double[]>();
 		pathGoalCoordinates.add(tempArray);
-		String currentPlanLocation = "";
+		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, tempArray);
 
 		while(currentPlanLocation != "Final Goal Location"){
 			switch (currentPlanLocation) {
@@ -351,6 +352,23 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
+	public String detirmineRelativeLocation(double goalCoordinates[], double currentCoordinates[]) {
+		double xGoal = goalCoordinates[0];
+		double yGoal = goalCoordinates[1];
+		double xPos = currentCoordinates[0];
+		double yPos = currentCoordinates[1];
+
+		int goalAisle = getAisleIndex(goalCoordinates);
+		int currentAisle = getAisleIndex(currentCoordinates);
+		if (currentAisle >= 1 && currentAisle <= 6)
+			if (goalAisle == currentAisle) return "Correct Aisle";
+			else return "Wrong Aisle";
+		else if (currentAisle == 8 || currentAisle==9) return "Aisle Hub";
+		else if (currentAisle == 7) return "Front of Store";
+		else if (currentAisle == 10) return "Back of Store"; 
+		return "Error Detirmining Relative Location";
+	}
+	
 	public int get_direction_from_goal_list() {
 		int direction = 6;
 		switch (pathGoalList.get(0)) { // TODO: cases redundant? need refactor
@@ -396,7 +414,19 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public int getAisleIndex(double coordinates[]){ //Look at the goal Coordinates and detirmine which aisle to go to
+	public int getAisleIndex(double coordinates[]){ //returns the region of the store of the coordinates given
+		// 1-6  = Aisles top->bottom, 7 = front of store, 8 = Front Hub, 9 = Back Hub, 10 = Back of Store
+		double xPos = coordinates[0];
+		double yPos = coordinates[1];
+		if (xPos > 5.5 && xPos < 14.5) //in an aisle
+			for (int i = 1; i <= 6; i++) 
+				if (obsv.inAisle(playerIndex, i)) return i;
+		else if(xPos <= 3.75) return 7;
+		else if(obsv.inAisleHub(playerIndex)) return 8;
+		else if(obsv.inRearAisleHub(playerIndex)) return 9;
+		else if(xPos >= 16.5) return 10;
+
+		System.out.println("Get Aisle Index Failed");
 		return 0;
 	}
 

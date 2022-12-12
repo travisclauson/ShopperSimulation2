@@ -117,6 +117,7 @@ public class Agent extends SupermarketComponentImpl {
 	
 		//MOVE - move based on moveDirection
 		act(actualMoveDirection);
+		// System.out.println(actualMoveDirection);
 		count+=1;
 	}
 
@@ -635,16 +636,6 @@ public class Agent extends SupermarketComponentImpl {
 			case "10":
 				direction = 10;
 				break;
-			// case "North":
-			// 	// goNorth();
-			// 	direction = 0;
-			// 	skipCheckNorm = true;
-			// 	break;
-			// case "South":
-			// 	// goSouth();
-			// 	direction = 1;
-			// 	skipCheckNorm = true;
-			// 	break;
 			default:
 				direction = 6;
 				break;

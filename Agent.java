@@ -74,7 +74,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Custom Scenario
 	boolean customShoppingList = true;
-	String customFoodItem = "apples"; //"brie cheese";
+	String customFoodItem = "brie cheese"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerCoordinates = false;
@@ -133,7 +133,7 @@ public class Agent extends SupermarketComponentImpl {
 			obsv.players[playerIndex].shopping_list[i] + "\n");
 		}
 
-		setGoalLocation();
+		// setGoalLocation();
 		buildPathPlan(); //Build Plan to grab cart
 		// TODO: Generate queue for finding cart 
 		setupDone = true;
@@ -150,6 +150,8 @@ public class Agent extends SupermarketComponentImpl {
 					actionList.remove(0);
 					if (numOfUniqueItemLeft > 0) {
 						buildPathPlan();
+						System.out.println("build path after find cart");
+						System.out.println(actionList);
 					}
 					break;
 				case "Shopping": 
@@ -168,6 +170,10 @@ public class Agent extends SupermarketComponentImpl {
 				case "Exiting": // should never be reached
 					break; 
 			}
+
+			System.out.println("Generate new queue");
+			System.out.print("path: ");
+			System.out.println(pathGoalList);
 		}
 		return get_direction_from_goal_list();
 	}
@@ -288,19 +294,19 @@ public class Agent extends SupermarketComponentImpl {
 					break;
 
 				case ("Aisle Hub"): //update Y
-					if (currentAction == "Finding Carts") {
+					if (actionList.get(0) == "Finding Carts") {
 						tempArray[1] = 17;
 						pathGoalList.add("Goal Vertical");
-					}
-					else if (currentAction == "Checking Out" || currentAction == "Exiting") {
+					} else if (actionList.get(0) == "Checking Out" || actionList.get(0) == "Exiting") {
 						tempArray[1] = 7.5;
 						pathGoalList.add("Goal Vertical");
-					}
-					else if (currentAction == "Shopping"){
+					} else if (actionList.get(0) == "Shopping"){
+						findFoodCoordinates();
 						int aisleIndex = getAisleIndex(adjustedGoalCoordinates);
 						//System.out.println("Goal Coordinates for Food item: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						pathGoalList.add("Aisle");// + aisleIndex);
 						tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
+
 					}
 					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
 					currentPlanLocation = "Correct Aisle";
@@ -328,7 +334,7 @@ public class Agent extends SupermarketComponentImpl {
 
 				case ("Front of Store"): //update X
 					pathGoalList.add("Aisle Hub"); // 1
-					tempArray[0] = 4.25;
+					tempArray[0] = 4;
 					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]}); 
 					currentPlanLocation = "Aisle Hub";
 					break;
@@ -343,7 +349,7 @@ public class Agent extends SupermarketComponentImpl {
 			}
 			// System.out.println("Path Coordinates List:");
 			// for(double paths[]: pathGoalCoordinates)
-			// 	System.out.println(paths[0] + ", " + paths[1]);
+			// System.out.println(paths[0] + ", " + paths[1]);
 		}
 		System.out.println("path goal coordinates: " + pathGoalCoordinates.get(0)[0] + ", " + pathGoalCoordinates.get(0)[1]);
 		if(printPathPlan) System.out.println("Path List: " + pathGoalList);
@@ -374,6 +380,8 @@ public class Agent extends SupermarketComponentImpl {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
 						System.out.println("Reached Aisle Hub");
+					} else {
+						System.out.println("Moving to Aisle Hub");
 					}
 					break;
 				case "Goal Location": // only need this case?
@@ -391,22 +399,26 @@ public class Agent extends SupermarketComponentImpl {
 						(actualMoveDirection == 1 && playerCoordinates[1] >= pathGoalCoordinates.get(0)[1] - oneStep)) {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
-						// System.out.println("Reached Goal Vertical");
+						System.out.println("Reached Goal Vertical");
 					}
-					// System.out.println(actualMoveDirection);
+					System.out.println("moving to vertical");
 					break;	
 				case "Goal Horizontal": 
-					if ((actualMoveDirection == 3 && playerCoordinates[0] <= pathGoalCoordinates.get(0)[0] + oneStep) ||
-						(actualMoveDirection == 2 && playerCoordinates[0] >= pathGoalCoordinates.get(0)[0] - oneStep)) {
+					if (((actualMoveDirection == 3 && playerCoordinates[0] <= pathGoalCoordinates.get(0)[0] + oneStep) ||
+						(actualMoveDirection == 2 && playerCoordinates[0] >= pathGoalCoordinates.get(0)[0] - oneStep))){
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+
 						System.out.println("Reached Goal Horizontal");
-						// System.out.print("playerCoordinates[1]: ");
-						// System.out.println(playerCoordinates[1]);
-						// System.out.print("playerCoordinates[1]: ");
-						// System.out.println(playerCoordinates[1]);
+						// System.out.println(actualMoveDirection);
+
+						// System.out.print("playerCoordinates[0]: ");
+						// System.out.println(playerCoordinates[0]);
+						// System.out.print("pathGoalCoordinates.get(0)[0]: ");
+						// System.out.println(pathGoalCoordinates.get(0)[0]);
+					} else {
+						System.out.println("Moving to horizontal");
 					}
-					System.out.println(actualMoveDirection);
 					break;
 				default:
 					break;
@@ -503,37 +515,37 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 	//Discover what our goal location is: exit, shelf x, register etc.
-	public void setGoalLocation() {
-		hasGoal = true;
-		if (currentAction != actionList.get(0)) {
-			String lastAction = currentAction;
-			currentAction = actionList.get(0);
-			System.out.println("New Action: " + currentAction);
+	// public void setGoalLocation() {
+	// 	hasGoal = true;
+	// 	if (currentAction != actionList.get(0)) {
+	// 		String lastAction = currentAction;
+	// 		currentAction = actionList.get(0);
+	// 		System.out.println("New Action: " + currentAction);
 			
-			switch (currentAction) {
-				case "Finding Carts":
-					findCartsCoordinates();
-					currentSubAction = "findCarts";
-					break;
-				case "Shopping":
-					findFoodCoordinates();
-					break; //see if statement below
-				case "Checking Out":
-					findRegisterCoordinates();
-					currentSubAction = "checkOut";
-					break;
-				case "Exiting":
-					findExitCoordinates();
-					break;
-			}
-		}
-	}
+	// 		switch (currentAction) {
+	// 			case "Finding Carts":
+	// 				findCartsCoordinates();
+	// 				currentSubAction = "findCarts";
+	// 				break;
+	// 			case "Shopping":
+	// 				findFoodCoordinates();
+	// 				break; //see if statement below
+	// 			case "Checking Out":
+	// 				findRegisterCoordinates();
+	// 				currentSubAction = "checkOut";
+	// 				break;
+	// 			case "Exiting":
+	// 				findExitCoordinates();
+	// 				break;
+	// 		}
+	// 	}
+	// }
 
-	public void findCartsCoordinates () {
-		goalLocation = "Carts";
-		goalCoordinates = obsv.cartReturns[0].position;
-		adjustedGoalCoordinates = goalCoordinates;
-	}
+	// public void findCartsCoordinates () {
+	// 	goalLocation = "Carts";
+	// 	goalCoordinates = obsv.cartReturns[0].position;
+	// 	adjustedGoalCoordinates = goalCoordinates;
+	// }
 
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(){
@@ -543,7 +555,7 @@ public class Agent extends SupermarketComponentImpl {
 		double xCounterAdjust = 1.5;
 		String desiredFoodItem = "";
 		//uniqueItemsInCart = obsv.carts[0].contents_quant.length;
-		uniqueItemsInCart = 0;
+		// uniqueItemsInCart = 0;
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			// For Live cases
 			if(!customShoppingList) {
@@ -552,41 +564,39 @@ public class Agent extends SupermarketComponentImpl {
 			// For Custom Cases
 			else desiredFoodItem = customFoodItem;
 
-			if  (!goalLocation.equals(desiredFoodItem)){ //If we're onto a new item, find coordinates
-				goalLocation = desiredFoodItem;
-				System.out.println("Searching for New Food Item: " + goalLocation);
+			goalLocation = desiredFoodItem;
+			System.out.println("Searching for New Food Item: " + goalLocation);
 
-				//Item is on shelf
-				for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
-					if (obsv.shelves[i].food_name.equals(goalLocation)) {
-						goalCoordinates = obsv.shelves[i].position;
-						adjustedGoalCoordinates[0] = goalCoordinates[0] - xShelfAdjust;
-						adjustedGoalCoordinates[1] = goalCoordinates[1] + yShelfAdjust;
-						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						shelfItem = true;
-						counterItem = false;
-						currentShelfIndex = i;
-						return;
-					}
+			//Item is on shelf
+			for (int i=0; i<obsv.shelves.length; i++) { //wish I could do a for each loop but I can't figure it out for type Shelf
+				if (obsv.shelves[i].food_name.equals(goalLocation)) {
+					goalCoordinates = obsv.shelves[i].position;
+					adjustedGoalCoordinates[0] = goalCoordinates[0] - xShelfAdjust;
+					adjustedGoalCoordinates[1] = goalCoordinates[1] + yShelfAdjust;
+					System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+					// shelfItem = true;
+					// counterItem = false;
+					// currentShelfIndex = i;
+					return;
 				}
-
-				//item is on counter
-				for (int i = 0; i<obsv.counters.length; i++){
-					if (obsv.counters[i].food.equals(goalLocation)) {
-						goalCoordinates = obsv.counters[i].position;
-						adjustedGoalCoordinates[0] = goalCoordinates[0] - xCounterAdjust;
-						adjustedGoalCoordinates[1] = goalCoordinates[1] + yCounterAdjust;
-						System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						shelfItem = false;
-						counterItem = true;
-						return;
-					}
-					//else System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
-				}
-				System.out.println("Could not find food item: " + goalLocation);
 			}
+
+			//item is on counter
+			for (int i = 0; i<obsv.counters.length; i++){
+				if (obsv.counters[i].food.equals(goalLocation)) {
+					goalCoordinates = obsv.counters[i].position;
+					adjustedGoalCoordinates[0] = goalCoordinates[0] - xCounterAdjust;
+					adjustedGoalCoordinates[1] = goalCoordinates[1] + yCounterAdjust;
+					System.out.println(goalLocation + ": " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+					shelfItem = false;
+					counterItem = true;
+					return;
+				}
+				//else System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
+			}
+			System.out.println("Could not find food item: " + goalLocation);
 		}
-		else actionList.remove(0);
+		uniqueItemsInCart++;
 	}
 
 	public void findRegisterCoordinates () {
@@ -667,6 +677,7 @@ public class Agent extends SupermarketComponentImpl {
 	public void updateObservation(){
 		obsv = getLastObservation();
 		playerCoordinates = obsv.players[playerIndex].position;
+		currentAction = actionList.get(0);
 	}
 
 	// Norm helper functions

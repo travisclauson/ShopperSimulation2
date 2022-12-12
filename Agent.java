@@ -91,6 +91,9 @@ public class Agent extends SupermarketComponentImpl {
 		checkNorms();
 		actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
 
+		// aupdate action queue
+		updateActionQueue(actualMoveDirection);
+
 		//MOVE - move based on moveDirection
 		act(actualMoveDirection);
 		count+=1;
@@ -108,14 +111,20 @@ public class Agent extends SupermarketComponentImpl {
 		System.out.println("\n\nAction List:");
 		System.out.println(actionList + "\n");
 
-		if (!customShoppingList) shoppingListLength = obsv.players[playerIndex].shopping_list.length;
-		else shoppingListLength = 1;
+		if (!customShoppingList) {
+			shoppingListLength = obsv.players[playerIndex].shopping_list.length;
+			numOfUniqueItemLeft = obsv.carts[0].contents_quant.length;
+		} else {
+			shoppingListLength = 1;
+			numOfUniqueItemLeft = 1;
+		}
 		System.out.println("Shopping List:");
 		for(int i=0; i<shoppingListLength; i++){
 			System.out.println(
 			String.valueOf(obsv.players[playerIndex].list_quant[i]) + " - " + 
 			obsv.players[playerIndex].shopping_list[i]);
 		}
+		// TODO: Generate queue for finding cart 
 		setupDone = true;
 	}
 
@@ -124,15 +133,25 @@ public class Agent extends SupermarketComponentImpl {
 	//Decide what our ideal action is
 	public int decideIdealAction(){ 
 		int direction = 6;
-		if (pathGoalList.isEmpty()) { // TODO: generate queue based on current action
+		if (pathGoalList.isEmpty()) {
 			switch (actionList.get(0)) {
 				case "Finding Carts":
+					actionList.remove(0);
 					break;
-				case "Shopping": // TODO: check if finish list, if not generate new shopping queue
+				case "Shopping": 
+					numOfUniqueItemLeft--;
+					if (numOfUniqueItemLeft > 0)
+						//generate food action queue
+					else {
+						actionList.remove(0);
+						// generate checkout queue
+					}
 					break;
 				case "Checking Out":
+					actionList.remove(0)
+					// generate exit queue
 					break;
-				case "Exiting":
+				case "Exiting": // should never be reached
 					break; 
 			}
 		}
@@ -226,15 +245,15 @@ public class Agent extends SupermarketComponentImpl {
 		int direction = 6;
 		switch pathGoalList.get(0) {
 			case "Aisle": 
-				if (pathGoalCoordinates[0][1] > playerCoordinates[1]) direction = 1;
+				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
 				break;
 			case "Aisle Hub":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
 				break;
 			case "Goal Location":
-				if (pathGoalCoordinates[0][0] > playerCoordinates[0]) direction = 2;
+				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
 				break;
 			case "interact"
@@ -300,12 +319,14 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
+	// NOT USED
 	public void findCartsCoordinates () {
 		goalLocation = "Carts";
 		goalCoordinates = obsv.cartReturns[0].position;
 		adjustedGoalCoordinates = goalCoordinates;
 	}
 
+	// NOT USED
 	//Detirmine Coordinates of the goal location
 	public void findFoodCoordinates(){
 		double yShelfAdjust = 2.5;
@@ -598,6 +619,38 @@ public class Agent extends SupermarketComponentImpl {
 
 		System.out.println("No actions are allowed at the moment");
 		return 6;
+	}
+	public void updateActionQueue(int actualMoveDirection) {
+		if (actualMoveDirection > 3 && actualMoveDirection < 6) {
+			pathGoalList.remove(0);
+			pathGoalCoordinates.remove(0);
+		} else if (actualMoveDirection <= 3 && actualMoveDirection >= 0){
+			double[] nextLocation = getNextLocation(actualMoveDirection, playerCoordinates[0], playerCoordinates[1]);
+			switch pathGoalList.get(0) {
+				case "Aisle": 
+					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1]))
+						pathGoalList.remove(0)
+						pathGoalCoordinates.remove(0);
+					break;
+				case "Aisle Hub":
+					if ((actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0]))
+						pathGoalList.remove(0)
+						pathGoalCoordinates.remove(0);
+					break;
+				case "Goal Location": // only need this case?
+					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0]))
+						pathGoalList.remove(0)
+						pathGoalCoordinates.remove(0);
+					break;
+				default:
+					break;
+			}
+		}
 	}
 }
 

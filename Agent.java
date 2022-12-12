@@ -77,7 +77,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	//Custom Scenario
 	boolean customShoppingList = true;
-	String customFoodItem = "brie cheese"; //"brie cheese";
+	String customFoodItem = "apples";//"brie cheese"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerCoordinates = false;
@@ -166,11 +166,11 @@ public class Agent extends SupermarketComponentImpl {
 					numOfUniqueItemLeft--;
 					if (numOfUniqueItemLeft > 0) {
 						buildPathPlan();
-						System.out.println("get another food;")
+						System.out.println("get another food");
 					} else {
 						actionList.remove(0);
 						buildPathPlan();
-						System.out.println("go to check out")
+						System.out.println("go to check out");
 					}
 					break;
 				case "Checking Out":

@@ -97,6 +97,8 @@ public class Agent extends SupermarketComponentImpl {
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
+		// System.out.print("path in main loop: ");
+		// System.out.println(pathGoalList);
 		// System.out.println(playerCoordinates[1]);
 		// checkNorms();
 		// actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
@@ -145,6 +147,7 @@ public class Agent extends SupermarketComponentImpl {
 	public int decideIdealAction(){ 
 		int direction = 6;
 		if (pathGoalList.isEmpty()) {
+			// System.out.println("pathGoalList is empty");
 			switch (actionList.get(0)) { // generate queue based on current action
 				case "Finding Carts": // reached when finished finding cart 
 					actionList.remove(0);
@@ -305,7 +308,7 @@ public class Agent extends SupermarketComponentImpl {
 						int aisleIndex = getAisleIndex(adjustedGoalCoordinates);
 						//System.out.println("Goal Coordinates for Food item: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 						pathGoalList.add("Aisle");// + aisleIndex);
-						tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
+						tempArray[1] = 4 * aisleIndex - 1; //should be the recipe for middle of the aisle
 
 					}
 					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
@@ -367,8 +370,8 @@ public class Agent extends SupermarketComponentImpl {
 			double[] nextLocation = getNextLocation(actualMoveDirection, playerCoordinates[0], playerCoordinates[1]);
 			switch (pathGoalList.get(0)) {
 				case "Aisle": 
-					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
-						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1])) {
+					if ((actualMoveDirection == 0 && playerCoordinates[1] <= pathGoalCoordinates.get(0)[1] + oneStep) ||
+						(actualMoveDirection == 1 && playerCoordinates[1] >= pathGoalCoordinates.get(0)[1] - oneStep)) {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
 						System.out.println("Reached Aisle");
@@ -465,6 +468,11 @@ public class Agent extends SupermarketComponentImpl {
 				if (pathGoalCoordinates.get(0)[1] >= playerCoordinates[1]) direction = 1;
 				else direction = 0;
 				System.out.println(" Goal Vertical");
+				break;
+			case "Goal Location":
+				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
+				else direction = 3;
+				System.out.println(" Goal Location");
 				break;
 			case "Interact":
 				direction = 4;

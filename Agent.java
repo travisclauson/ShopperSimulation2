@@ -67,7 +67,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean hasGoal = false;
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
-	int numOfNorms = 6; // total number of norms
+	int numOfNorms = 9; // total number of norms
 	boolean[][] possibleMoveDirections = new boolean[numOfNorms][7]; //each rows for one unique norm
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
@@ -194,7 +194,11 @@ public class Agent extends SupermarketComponentImpl {
 		// nomrs for navigation
 		wallCollisionNorm();
 		objectCollisionNorm();
-		playerCollisionNorm();
+		playerCollisionNorm(); //includes personal space norm
+		entranceOnlyNorm();
+		blockingExitNorm();
+		unattendedCartNorm();
+
 
 		// norms for interaction
 		cartTheftNorm();
@@ -662,7 +666,7 @@ public class Agent extends SupermarketComponentImpl {
 		return;
 	}
 
-	public void playerCollisionNorm(){ // player collision and personal space norm
+	public void playerCollisionNorm(){ // This includes personal space norm
 		int normIndex = 3;
 		double currX = obsv.players[playerIndex].position[0];
 		double currY = obsv.players[playerIndex].position[1];
@@ -717,8 +721,23 @@ public class Agent extends SupermarketComponentImpl {
 
 	}
 
+	public void blockingExitNorm() {
+		int normIndex = 7;
+		if (playerCoordinates[0] <= 1.5 && playerCoordinates[1] <= 7.8 && playerCoordinates[1] >=7.0)
+			possibleMoveDirections[normIndex][6] = false; //can't just stand there
+			return;
+	}
+
+	public void unattendedCartNorm() {
+		int normIndex = 8;
+	}
+
+	public void entranceOnlyNorm() {
+		int normIndex = 9;
+	}
+
 	public void interactionCancellationNorm() { // TODO: Figure out how to check this
-		int normIndex = 4;
+		int normIndex = 10;
 		// if (currentSubAction == "checkOut")
 		// 	if (subActionList.size() >= checkOutCancelationThreshold[0]
 		// 	&& subActionList.size() <= checkOutCancelationThreshold[1])
@@ -728,11 +747,6 @@ public class Agent extends SupermarketComponentImpl {
 		// 		tempMoveDirection = subActionList.get(0);
 		return;
 	}
-
-	public void personalSpaceNorm() {
-
-	}
-
 
 
 	/////////////////////////// Helpers ///////////////////////////

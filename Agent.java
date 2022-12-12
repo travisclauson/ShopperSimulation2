@@ -34,13 +34,19 @@ public class Agent extends SupermarketComponentImpl {
 	String currentAction = "";
 	boolean setupDone = false;
 	int uniqueItemsInCart = 0;
+	int numOfUniqueItemLeft = 0;
 	ArrayList<String> actionList = new ArrayList<String>(
             Arrays.asList("Finding Carts", "Shopping", "Checking Out", "Exiting"));
+	ArrayList <String> pathGoalList;
+	ArrayList <double[]> pathGoalCoordinates;
+	String currentPlanLocation = "";
+
 	int currentShelfIndex = 0;
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
 	boolean counterItem = false;
 	boolean usingAlternatePath = false;
+	boolean playerCollisionNormViolated = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -136,23 +142,23 @@ public class Agent extends SupermarketComponentImpl {
 			switch (actionList.get(0)) { // generate queue based on current action
 				case "Finding Carts": // reached when finished finding cart 
 					actionList.remove(0);
-					if (numOfUniqueItemLeft > 0)
+					if (numOfUniqueItemLeft > 0) {
 						//generate food action queue for the 1st item
-					else { // when shopping list is empty
+					} else { // when shopping list is empty
 						// generate exit queue
 					} 
 					break;
 				case "Shopping": 
 					numOfUniqueItemLeft--;
-					if (numOfUniqueItemLeft > 0)
+					if (numOfUniqueItemLeft > 0) {
 						//generate food action queue
-					else {
+					} else {
 						actionList.remove(0);
 						// generate checkout queue
 					}
 					break;
 				case "Checking Out":
-					actionList.remove(0)
+					actionList.remove(0);
 					// generate exit queue
 					break;
 				case "Exiting": // should never be reached
@@ -253,15 +259,15 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// SECONDARY FUNCTIONS ///////////
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
-		ArrayList <String> pathGoalList = new ArrayList<String>();
+		pathGoalList = new ArrayList<String>();
 		pathGoalList.add("Current Location");
 		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
-		ArrayList <double[]> pathGoalCoordinates = new ArrayList<double[]>();
+		pathGoalCoordinates = new ArrayList<double[]>();
 		pathGoalCoordinates.add(tempArray);
 		String currentPlanLocation = "";
 
 		while(currentPlanLocation != "Final Goal Location"){
-			switch (currentPlanLocation){
+			switch (currentPlanLocation) {
 				case ("Wrong Aisle"): //update X
 					int hub = whichHubToUse();
 					pathGoalList.add("Aisle Hub " + hub);
@@ -315,26 +321,29 @@ public class Agent extends SupermarketComponentImpl {
 			pathGoalCoordinates.remove(0);
 		} else if (actualMoveDirection <= 3 && actualMoveDirection >= 0){
 			double[] nextLocation = getNextLocation(actualMoveDirection, playerCoordinates[0], playerCoordinates[1]);
-			switch pathGoalList.get(0) {
+			switch (pathGoalList.get(0)) {
 				case "Aisle": 
 					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
-						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1]))
-						pathGoalList.remove(0)
+						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1])) {
+						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+					}
 					break;
 				case "Aisle Hub":
 					if ((actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
-						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0]))
-						pathGoalList.remove(0)
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
+						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+					}
 					break;
 				case "Goal Location": // only need this case?
 					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
 						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1]) ||
 						(actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
-						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0]))
-						pathGoalList.remove(0)
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
+						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+					}
 					break;
 				default:
 					break;
@@ -342,9 +351,9 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public void get_direction_from_goal_list() {
+	public int get_direction_from_goal_list() {
 		int direction = 6;
-		switch pathGoalList.get(0) { // TODO: cases redundant? need refactor
+		switch (pathGoalList.get(0)) { // TODO: cases redundant? need refactor
 			case "Aisle": 
 				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
@@ -361,10 +370,10 @@ public class Agent extends SupermarketComponentImpl {
 				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
 				break;
-			case "interact"
+			case "interact":
 				direction = 4;
 				break;
-			case "toggle"
+			case "toggle":
 				direction = 5;
 				break;
 			default:

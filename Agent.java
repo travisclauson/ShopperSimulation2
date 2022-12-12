@@ -236,9 +236,13 @@ public class Agent extends SupermarketComponentImpl {
 
 		int goalAisle = getAisleIndex(goalCoordinates);
 		int currentAisle = getAisleIndex(currentCoordinates);
-		if (goalAisle == 0 && currentAisle == 0) return "";
-		if (goalAisle == currentAisle) return "Correct Aisle";
-		return "";
+		if (currentAisle >= 1 && currentAisle <= 6)
+			if (goalAisle == currentAisle) return "Correct Aisle";
+			else return "Wrong Aisle";
+		else if (currentAisle == 8 || currentAisle==9) return "Aisle Hub";
+		else if (currentAisle == 7) return "Front of Store";
+		else if (currentAisle == 10) return "Back of Store"; 
+		return "Error Detirmining Relative Location";
 	}
 
 	public int get_direction_from_goal_list() {

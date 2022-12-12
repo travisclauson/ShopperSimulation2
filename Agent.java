@@ -24,6 +24,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	// variables
 	int playerIndex;
+	int cartIndex;
 	int idealMoveDirection; //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart, otherwise=null
 	int actualMoveDirection;
 	int count = 0;
@@ -49,6 +50,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean counterItem = false;
 	boolean usingAlternatePath = false;
 	boolean playerCollisionNormViolated = false;
+	boolean shopliftingNormChecked = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -67,8 +69,8 @@ public class Agent extends SupermarketComponentImpl {
 	boolean hasGoal = false;
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
-	int cartIndex = 0;
-	boolean[][] possibleMoveDirections = new boolean[4][7]; //4 rows for 4 unique norms
+	int numOfNorms = 6; // total number of norms
+	boolean[][] possibleMoveDirections = new boolean[numOfNorms][7]; //each rows for one unique norm
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
 	int[] counterCancelationThreshold = {17, 18};
@@ -195,15 +197,21 @@ public class Agent extends SupermarketComponentImpl {
 		for (boolean[] row: possibleMoveDirections) 
 			Arrays.fill(row, true);
 
+		// nomrs for navigation
 		wallCollisionNorm();
 		objectCollisionNorm();
 		playerCollisionNorm();
+
+		// norms for interaction
+		cartTheftNorm();
+		shopliftingNorm();
+		oneCartOnlyNorm();
+
 		// Finally check if interaction is canceled
 		interactionCancellationNorm();
 	}
 
 	public int decideActualAction(){
-		int tempMoveDirection = 6;
 		int count =1;
 		//intialize the summed array
 		boolean[] summedPossibleMoveDirections = {true, true, true, true, true, true, true};
@@ -225,44 +233,38 @@ public class Agent extends SupermarketComponentImpl {
 			return idealMoveDirection;
 		} else {
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
-			
-            if (actionList.get(0) == "Shopping" &&
-				pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
-				
-				// generate new queue to walk around, args?
-				
-				tempMoveDirection = get_direction_from_goal_list();
-				// check if valid direction, if yes set direction
-				if (summedPossibleMoveDirections[tempMoveDirection]) {
-					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
-				}
-				// if not valid, do nothing and wait for next loop
-			} else if (actionList.get(0) == "Shopping" &&
-				pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
-				
-				// generate new queue to walk around, args?
-				
-				tempMoveDirection = get_direction_from_goal_list();
-				// check if valid direction, if yes set direction, 
-				if (summedPossibleMoveDirections[tempMoveDirection]) {
-					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
-				}
-				// if not valid, do nothing and wait for next loop
-			} // TODO: other norm solutions
+			if (idealMoveDirection < 3 && idealMoveDirection > -1)
+				return find_actual_navigation_direction(summedPossibleMoveDirections);
+			else {
+				System.out.println("No actions are allowed at the moment");
+				return 6;
+			}
+		}
+	}
 
-			// if none of the above solution works, just pick any valid direction
-			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
+	public int find_actual_navigation_direction (boolean[] summedPossibleMoveDirections) {
+		if (actionList.get(0) == "Shopping" &&
+			pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
+			// generate new queue to walk around, args?
+			tempMoveDirection = get_direction_from_goal_list();
+		} else if (actionList.get(0) == "Shopping" &&
+			pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
+			// generate new queue to walk around, args?
+			tempMoveDirection = get_direction_from_goal_list();
+		} // TODO: other norm solutions
+
+		// check if valid direction, if yes set direction
+		if (!summedPossibleMoveDirections[tempMoveDirection]) {
+			for(int j = 0; j < summedPossibleMoveDirections.length; j++) {
 				if(summedPossibleMoveDirections[j]){
 					tempMoveDirection = j;
 					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
+				} else {
+					tempMoveDirection = 6;
+					System.out.println("No actions are allowed at the moment");
 				}
 			}
 		}
-
-		System.out.println("No actions are allowed at the moment");
 		return tempMoveDirection;
 	}
 	
@@ -739,6 +741,52 @@ public class Agent extends SupermarketComponentImpl {
 		return;
 	}
 
+	// check if the next interaction will toggle other's cart
+	// This will happen only when other left thier cart between our agent and the cart
+	// So we wait for other to leave, and try agin in the next loop
+	public void cartTheftNorm() {
+		int normIndex = 4;
+		for (int i = 0; i < obsv.carts.length; i++) {
+			if (obsv.carts[i].owner != playerIndex) {
+				if(obsv.carts[i].canInteract(obsv.players[playerIndex])) {
+					possibleMoveDirections[normIndex][5] = false;
+					return;
+				}
+			}
+		}
+	}
+
+	// check if exiting with unpaid item
+	// if yes, add "Checking Out" to actionList to check out again
+	public void shopliftingNorm() {
+		int normIndex = 5;
+		if (!shopliftingNormChecked && actionList.get(0) == "Exiting") {
+			int cartItemQuant = 0, purchasedCartItemQuant = 0;
+			for (int i = 0; i < obsv.carts[cartIndex].contents_quant.length; i++) {
+				cartItemQuant += obsv.carts[cartIndex].contents_quant[i];
+			}
+			for (int i = 0; i < obsv.carts[cartIndex].purchased_quant.length; i++) {
+				purchasedCartItemQuant += obsv.carts[cartIndex].purchased_quant[i];
+			}
+			if (purchasedCartItemQuant < cartItemQuant) { // if there are unpaid items
+				actionList.add(0, "Checking Out"); // go back to state "Checking out"
+				// re-generate checkout queue
+				disable_all_possible_move_direction(normIndex);
+			} else {
+				shopliftingNormChecked = true;
+			}
+		}
+	}
+
+	public void oneCartOnlyNorm() {
+		if (obsv.players[playerIndex].curr_cart >= 0 && obsv.players[playerIndex].curr_cart != cartIndex) {
+			// update queue to return the current cart, find original cart, and continue
+			// (add these two path at the beginning of  the queue)
+			disable_all_possible_move_direction(normIndex);
+		}
+
+	}
+
 	public void interactionCancellationNorm() { // TODO: Figure out how to check this
 		int normIndex = 4;
 		// if (currentSubAction == "checkOut")
@@ -805,6 +853,11 @@ public class Agent extends SupermarketComponentImpl {
 		else if (moveDirection == 2) nextLocation[0] += oneStep;
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
+	}
+
+	public void disable_all_possible_move_direction(int normIndex) {
+		for (int i = 0; i < 4; i++) // Set all possible direction to false, and start to check out in next loop
+			possibleMoveDirections[normIndex][i] = false;
 	}
 }
 

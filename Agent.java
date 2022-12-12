@@ -559,7 +559,7 @@ public class Agent extends SupermarketComponentImpl {
 			case "Goal Horizontal":
 				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
-				System.out.println(" Goal Horizontal");
+				System.out.println("Goal Horizontal");
 				break;
 			case "Goal Vertical":
 				if (pathGoalCoordinates.get(0)[1] >= playerCoordinates[1]) direction = 1;

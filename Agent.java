@@ -1,4 +1,4 @@
-//README
+// README
 // I couldn't figure out how to actually grab the items and put them in the cart
 // For now, approaching a shelf is hacky, i just ram into it
 // I initialize the shopping list myself at the bottom of this script (line 259)
@@ -22,6 +22,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	public static SupermarketObservation obsv = new SupermarketObservation();
 
+	// variables
 	int playerIndex;
 	int idealMoveDirection; //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart, otherwise=null
 	int actualMoveDirection;
@@ -33,12 +34,14 @@ public class Agent extends SupermarketComponentImpl {
 	String currentAction = "";
 	boolean setupDone = false;
 	int uniqueItemsInCart = 0;
-	ArrayList<String> actionList;
-	int currentShelfIndex = 0;
-	ArrayList <String> pathGoalList = new ArrayList<String>();
-	ArrayList <double[]> pathGoalCoordinates = new ArrayList<double[]>();
+	int numOfUniqueItemLeft = 0;
+	ArrayList<String> actionList = new ArrayList<String>(
+            Arrays.asList("Finding Carts", "Shopping", "Checking Out", "Exiting"));
+	ArrayList <String> pathGoalList;
+	ArrayList <double[]> pathGoalCoordinates;
+	String currentPlanLocation = "";
 
-	// boolean foundCoordinates = false; // not used
+	int currentShelfIndex = 0;
 	int shoppingListLength = 0;
 	boolean shelfItem = false;
 	boolean counterItem = false;
@@ -89,12 +92,15 @@ public class Agent extends SupermarketComponentImpl {
 		if (printLoop) System.out.println("Loop: " + Integer.toString(count));
 		
 		//SENSE
-		updateLastObservation();
+		updateObservation();
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
 		checkNorms();
 		actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
+
+		// aupdate action queue
+		updateActionQueue(actualMoveDirection);
 
 		//MOVE - move based on moveDirection
 		act(actualMoveDirection);
@@ -103,41 +109,60 @@ public class Agent extends SupermarketComponentImpl {
 
 
 
-	//Prints Shopping and Action List
 	public void setup(){ 
-		obsv = getLastObservation();
+		updateObservation();
 
 		playerIndex = obsv.players.length - 1;
 		System.out.println("We are initialized as Player: " + playerIndex + "\n");
-		actionList = initializeActionList();
 		System.out.println("\n\nAction List:");
 		System.out.println(actionList + "\n");
 
-		if (!customShoppingList) shoppingListLength = obsv.players[playerIndex].shopping_list.length;
-		else shoppingListLength = 1;
+		if (!customShoppingList) {
+			shoppingListLength = obsv.players[playerIndex].shopping_list.length;
+			numOfUniqueItemLeft = shoppingListLength;
+		} else {
+			shoppingListLength = 1;
+			numOfUniqueItemLeft = 1;
+		}
 		System.out.println("Shopping List:");
 		for(int i=0; i<shoppingListLength; i++){
 			System.out.println(
 			String.valueOf(obsv.players[playerIndex].list_quant[i]) + " - " + 
 			obsv.players[playerIndex].shopping_list[i]);
 		}
+		// TODO: Generate queue for finding cart 
 		setupDone = true;
 	}
 
-	/////////// 3 CORE FUNCTIONS ///////////
+	/////////// CORE FUNCTIONS ///////////
 
 	//Decide what our ideal action is
 	public int decideIdealAction(){ 
 		int direction = 6;
-		if (pathGoalList.isEmpty()) { // TODO: generate queue based on current action
-			switch (actionList.get(0)) {
-				case "Finding Carts":
+		if (pathGoalList.isEmpty()) {
+			switch (actionList.get(0)) { // generate queue based on current action
+				case "Finding Carts": // reached when finished finding cart 
+					actionList.remove(0);
+					if (numOfUniqueItemLeft > 0) {
+						//generate food action queue for the 1st item
+					} else { // when shopping list is empty
+						// generate exit queue
+					} 
 					break;
-				case "Shopping": // TODO: check if finish list, if not generate new shopping queue
+				case "Shopping": 
+					numOfUniqueItemLeft--;
+					if (numOfUniqueItemLeft > 0) {
+						//generate food action queue
+					} else {
+						actionList.remove(0);
+						// generate checkout queue
+					}
 					break;
 				case "Checking Out":
+					actionList.remove(0);
+					// generate exit queue
 					break;
-				case "Exiting":
+				case "Exiting": // should never be reached
 					break; 
 			}
 		}
@@ -157,6 +182,70 @@ public class Agent extends SupermarketComponentImpl {
 		// Finally check if interaction is canceled
 		interactionCancellationNorm();
 	}
+
+	public int decideActualAction(){
+		int tempMoveDirection = 6;
+		int count =1;
+		//intialize the summed array
+		boolean[] summedPossibleMoveDirections = {true, true, true, true, true, true, true};
+
+		for (int i = 0; i < possibleMoveDirections[0].length; i++){ //Fill in the summed array
+			if(printAllNormResults) System.out.print("\nDirection " + i + ": ");
+			count = 1;
+			for (boolean[] norm : possibleMoveDirections){
+				if (norm[i] == false) //if any norms violate a certain direction, set that sumPossibleDirection false
+					summedPossibleMoveDirections[i] = false;
+				if(printAllNormResults) 
+					System.out.print("Norm " + count + ": " + norm[i] + "  ");
+				count++;
+			}
+		}
+		
+		if (summedPossibleMoveDirections[idealMoveDirection]){
+			if(printAllNormResults) System.out.println("Ideal action: " + idealMoveDirection + " is valid");
+			return idealMoveDirection;
+		} else {
+			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
+			
+            if (actionList.get(0) == "Shopping" &&
+				pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
+				
+				// generate new queue to walk around, args?
+				
+				tempMoveDirection = get_direction_from_goal_list();
+				// check if valid direction, if yes set direction
+				if (summedPossibleMoveDirections[tempMoveDirection]) {
+					System.out.println("Settled for a new action: " + tempMoveDirection);
+					return tempMoveDirection;
+				}
+				// if not valid, do nothing and wait for next loop
+			} else if (actionList.get(0) == "Shopping" &&
+				pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
+				
+				// generate new queue to walk around, args?
+				
+				tempMoveDirection = get_direction_from_goal_list();
+				// check if valid direction, if yes set direction, 
+				if (summedPossibleMoveDirections[tempMoveDirection]) {
+					System.out.println("Settled for a new action: " + tempMoveDirection);
+					return tempMoveDirection;
+				}
+				// if not valid, do nothing and wait for next loop
+			} // TODO: other norm solutions
+
+			// if none of the above solution works, just pick any valid direction
+			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
+				if(summedPossibleMoveDirections[j]){
+					tempMoveDirection = j;
+					System.out.println("Settled for a new action: " + tempMoveDirection);
+					return tempMoveDirection;
+				}
+			}
+		}
+
+		System.out.println("No actions are allowed at the moment");
+		return tempMoveDirection;
+	}
 	
 	//Literally just walk in the direction that Decide() detirmines, interact if neccesary
 	public void act(int dir){
@@ -171,16 +260,15 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// SECONDARY FUNCTIONS ///////////
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
-		System.out.println("Building a Path plan");
-		pathGoalList.clear();
+		pathGoalList = new ArrayList<String>();
 		pathGoalList.add("Current Location");
 		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
-		pathGoalCoordinates.clear();
+		pathGoalCoordinates = new ArrayList<double[]>();
 		pathGoalCoordinates.add(tempArray);
 		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, tempArray);
 
 		while(currentPlanLocation != "Final Goal Location"){
-			switch (currentPlanLocation){
+			switch (currentPlanLocation) {
 				case ("Wrong Aisle"): //update X
 					int hub = whichHubToUse();
 					pathGoalList.add("Aisle Hub " + hub);
@@ -228,6 +316,42 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
+	public void updateActionQueue(int actualMoveDirection) {
+		if (actualMoveDirection > 3 && actualMoveDirection < 6) {
+			pathGoalList.remove(0);
+			pathGoalCoordinates.remove(0);
+		} else if (actualMoveDirection <= 3 && actualMoveDirection >= 0){
+			double[] nextLocation = getNextLocation(actualMoveDirection, playerCoordinates[0], playerCoordinates[1]);
+			switch (pathGoalList.get(0)) {
+				case "Aisle": 
+					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1])) {
+						pathGoalList.remove(0);
+						pathGoalCoordinates.remove(0);
+					}
+					break;
+				case "Aisle Hub":
+					if ((actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
+						pathGoalList.remove(0);
+						pathGoalCoordinates.remove(0);
+					}
+					break;
+				case "Goal Location": // only need this case?
+					if ((actualMoveDirection == 0 && nextLocation[1] <= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1]) ||
+						(actualMoveDirection == 2 && nextLocation[0] >= pathGoalCoordinates.get(0)[0]) ||
+						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
+						pathGoalList.remove(0);
+						pathGoalCoordinates.remove(0);
+					}
+					break;
+				default:
+					break;
+			}
+		}
+	}
+
 	public String detirmineRelativeLocation(double goalCoordinates[], double currentCoordinates[]) {
 		double xGoal = goalCoordinates[0];
 		double yGoal = goalCoordinates[1];
@@ -244,10 +368,10 @@ public class Agent extends SupermarketComponentImpl {
 		else if (currentAisle == 10) return "Back of Store"; 
 		return "Error Detirmining Relative Location";
 	}
-
+	
 	public int get_direction_from_goal_list() {
 		int direction = 6;
-		switch (pathGoalList.get(0)) {
+		switch (pathGoalList.get(0)) { // TODO: cases redundant? need refactor
 			case "Aisle": 
 				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
@@ -256,9 +380,13 @@ public class Agent extends SupermarketComponentImpl {
 				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
 				break;
-			case "Goal Location":
+			case "Goal Location Horizontal":
 				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
+				break;
+			case "Goal Location Vertical":
+				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
+				else direction = 0;
 				break;
 			case "interact":
 				direction = 4;
@@ -302,7 +430,6 @@ public class Agent extends SupermarketComponentImpl {
 		return 0;
 	}
 
-
 	//Discover what our goal location is: exit, shelf x, register etc.
 	public void setGoalLocation() {
 		hasGoal = true;
@@ -326,12 +453,6 @@ public class Agent extends SupermarketComponentImpl {
 					findExitCoordinates();
 					break;
 			}
-		}
-		// If we're shopping but need to look for a new item
-		if (currentAction == "Shopping" && goalLocation != obsv.players[playerIndex].shopping_list[uniqueItemsInCart]) { 
-			findFoodCoordinates();
-			if (shelfItem == true) currentSubAction = "pickUpShelfItem";
-			if (counterItem == true) currentSubAction = "pickUpCounterItem";
 		}
 	}
 
@@ -410,67 +531,6 @@ public class Agent extends SupermarketComponentImpl {
 		System.out.println("Exit: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
 	}
 
-	 // Interact with object, then update new goal
-
-	// Fill Action List with Items
-	public ArrayList<String> initializeActionList(){
-		ArrayList<String> actionList = new ArrayList<String>();
-		actionList.add("Finding Carts");
-		actionList.add("Shopping");
-		actionList.add("Checking Out");
-		actionList.add("Exiting");
-		return actionList;
-	}
-
-	//This sets up a queue of movements/actions for each scenario
-	public ArrayList<Integer> initializeSubActionList(String action){
-		subActionList = new ArrayList<Integer>();
-		if (action.equals("findCarts")) { //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart
-			subActionList.add(1);
-			subActionList.add(4);
-		} 
-		else if (action.equals("pickUpShelfItem")) {
-			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
-				subActionList.add(5);
-				int stepNum = (int)Math.floor((obsv.players[playerIndex].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
-				for(int i=0; i<stepNum; i++) subActionList.add(0);
-				subActionList.add(4);
-				subActionList.add(4);
-				for(int i=0; i<stepNum; i++) subActionList.add(1);
-				subActionList.add(-1); // decide on the fly
-				subActionList.add(4);
-				subActionList.add(4);
-				subActionList.add(5);
-			}
-		} 
-		else if (action.equals("checkOut")) {
-			subActionList.add(5);
-			// need fix or sometimes player run into register. 
-			// Seems like to happen when check out after pick up an object that is located above the register.
-			int stepNum = 2; //(int)floor((obsv.players[playerIndex].position[1] - goalCoordinates[1]) / oneStep);
-			for (int i = 0; i < 2; i++) subActionList.add(0);
-			subActionList.add(4);
-			subActionList.add(4);
-			subActionList.add(3);
-			subActionList.add(5);
-		}
-		else if(action.equals("pickUpCounterItem")){
-			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
-				subActionList.add(5);
-				for(int i=0; i<5; i++) subActionList.add(0);
-				for(int i=0; i<7; i++) subActionList.add(2);
-				for(int i=0; i<3; i++) subActionList.add(4);
-				for(int i=0; i<7; i++) subActionList.add(3);
-				for(int i=0; i<5; i++) subActionList.add(1);
-				subActionList.add(2);
-				subActionList.add(4);
-				subActionList.add(4);
-				subActionList.add(5);
-			}
-		}
-		return subActionList;
-	}
-
 	//Custom Sleep function in ms
 	public void sleep(int duration){
 		try{
@@ -482,8 +542,8 @@ public class Agent extends SupermarketComponentImpl {
 	}
 
 
-	/////////////////////////// Norms ///////////////////////////
 
+	/////////////////////////// Norms ///////////////////////////
 	public void wallCollisionNorm(){
 		int normIndex = 1;
 		double currX = obsv.players[playerIndex].position[0];
@@ -516,22 +576,22 @@ public class Agent extends SupermarketComponentImpl {
 		return;
 	}
 
-	public void interactionCancellationNorm() {
+	public void interactionCancellationNorm() { // TODO: Figure out how to check this
 		int normIndex = 4;
-		if (currentSubAction == "checkOut")
-			if (subActionList.size() >= checkOutCancelationThreshold[0]
-			&& subActionList.size() <= checkOutCancelationThreshold[1])
-				tempMoveDirection = subActionList.get(0);
-		else if (subActionList.size() >= counterCancelationThreshold[0]
-			&& subActionList.size() <= counterCancelationThreshold[1])
-				tempMoveDirection = subActionList.get(0);
+		// if (currentSubAction == "checkOut")
+		// 	if (subActionList.size() >= checkOutCancelationThreshold[0]
+		// 	&& subActionList.size() <= checkOutCancelationThreshold[1])
+		// 		tempMoveDirection = subActionList.get(0);
+		// else if (subActionList.size() >= counterCancelationThreshold[0]
+		// 	&& subActionList.size() <= counterCancelationThreshold[1])
+		// 		tempMoveDirection = subActionList.get(0);
 		return;
 	}
 
 
 
 	/////////////////////////// Helpers ///////////////////////////
-	public void updateLastObservation(){
+	public void updateObservation(){
 		obsv = getLastObservation();
 		playerCoordinates = obsv.players[playerIndex].position;
 	}
@@ -581,58 +641,6 @@ public class Agent extends SupermarketComponentImpl {
 		else if (moveDirection == 2) nextLocation[0] += oneStep;
 		else nextLocation[0] -= oneStep;
 		return nextLocation;
-	}
-
-	public int decideActualAction(){
-		int tempMoveDirection = 6;
-		int count =1;
-		//intialize the summed array
-		boolean[] summedPossibleMoveDirections = {true, true, true, true, true, true, true};
-
-		for (int i = 0; i < possibleMoveDirections[0].length; i++){ //Fill in the summed array
-			if(printAllNormResults) System.out.print("\nDirection " + i + ": ");
-			count = 1;
-			for (boolean[] norm : possibleMoveDirections){
-				if (norm[i] == false) //if any norms violate a certain direction, set that sumPossibleDirection false
-					summedPossibleMoveDirections[i] = false;
-				if(printAllNormResults) 
-					System.out.print("Norm " + count + ": " + norm[i] + "  ");
-				count++;
-			}
-		}
-		
-		if (summedPossibleMoveDirections[idealMoveDirection]){
-			if(printAllNormResults) System.out.println("Ideal action: " + idealMoveDirection + " is valid");
-			return idealMoveDirection;
-		}
-
-		else{
-			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
-			
-            if (pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list(); // generate new queue to walk around, args?
-				// check if valid direction, if yes set direction
-				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
-				// if not valid, do nothing and wait for next loop
-			} else if (pathGoalList.get(0) == "Aisle Hub" && playerCollisionNormViolated) {
-				tempMoveDirection = get_direction_from_goal_list(); // generate new queue to walk around, args?
-				// check if valid direction, if yes set direction, 
-				if (summedPossibleMoveDirections[tempMoveDirection]) return tempMoveDirection;
-				// if not valid, do nothing and wait for next loop
-			} // TODO: other norm solutions
-
-			// if none of the above solution works, randomly pick a direction
-			for(int j = 0; j < summedPossibleMoveDirections.length; j++){
-				if(summedPossibleMoveDirections[j]){
-					tempMoveDirection = j;
-					System.out.println("Settled for a new action: " + tempMoveDirection);
-					return tempMoveDirection;
-				}
-			}
-		}
-
-		System.out.println("No actions are allowed at the moment");
-		return 6;
 	}
 }
 
@@ -733,3 +741,68 @@ public class Agent extends SupermarketComponentImpl {
 			}
 		}
 		*/
+
+
+
+/**
+	// Fill Action List with Items
+	public ArrayList<String> initializeActionList(){
+		ArrayList<String> actionList = new ArrayList<String>();
+		actionList.add("Finding Carts");
+		actionList.add("Shopping");
+		actionList.add("Checking Out");
+		actionList.add("Exiting");
+		return actionList;
+	} */
+
+
+
+ /**
+ //This sets up a queue of movements/actions for each scenario
+	public ArrayList<Integer> initializeSubActionList(String action){
+		subActionList = new ArrayList<Integer>();
+		if (action.equals("findCarts")) { //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart
+			subActionList.add(1);
+			subActionList.add(4);
+		} 
+		else if (action.equals("pickUpShelfItem")) {
+			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
+				subActionList.add(5);
+				int stepNum = (int)Math.floor((obsv.players[playerIndex].position[1] - obsv.shelves[currentShelfIndex].position[1] - shelfBuffer) / oneStep) - 1;
+				for(int i=0; i<stepNum; i++) subActionList.add(0);
+				subActionList.add(4);
+				subActionList.add(4);
+				for(int i=0; i<stepNum; i++) subActionList.add(1);
+				subActionList.add(-1); // decide on the fly
+				subActionList.add(4);
+				subActionList.add(4);
+				subActionList.add(5);
+			}
+		} 
+		else if (action.equals("checkOut")) {
+			subActionList.add(5);
+			// need fix or sometimes player run into register. 
+			// Seems like to happen when check out after pick up an object that is located above the register.
+			int stepNum = 2; //(int)floor((obsv.players[playerIndex].position[1] - goalCoordinates[1]) / oneStep);
+			for (int i = 0; i < 2; i++) subActionList.add(0);
+			subActionList.add(4);
+			subActionList.add(4);
+			subActionList.add(3);
+			subActionList.add(5);
+		}
+		else if(action.equals("pickUpCounterItem")){
+			for(int j=0; j<obsv.players[playerIndex].list_quant[uniqueItemsInCart]; j++){
+				subActionList.add(5);
+				for(int i=0; i<5; i++) subActionList.add(0);
+				for(int i=0; i<7; i++) subActionList.add(2);
+				for(int i=0; i<3; i++) subActionList.add(4);
+				for(int i=0; i<7; i++) subActionList.add(3);
+				for(int i=0; i<5; i++) subActionList.add(1);
+				subActionList.add(2);
+				subActionList.add(4);
+				subActionList.add(4);
+				subActionList.add(5);
+			}
+		}
+		return subActionList;
+	} */

@@ -36,7 +36,7 @@ public class Agent extends SupermarketComponentImpl {
 	int uniqueItemsInCart = 0;
 	int numOfUniqueItemLeft = 0;
 	ArrayList<String> actionList = new ArrayList<String>(
-            Arrays.asList("Finding Carts", "Shopping", "Checking Out", "Exiting"));
+            Arrays.asList("Shopping", "Checking Out", "Exiting"));
 	ArrayList <String> pathGoalList;
 	ArrayList <double[]> pathGoalCoordinates;
 	String currentPlanLocation = "";
@@ -73,8 +73,8 @@ public class Agent extends SupermarketComponentImpl {
     int collisionPlayerIndex = -1;
 
 	//Custom Scenario
-	boolean customShoppingList = false;
-	String customFoodItem = "milk"; //"brie cheese";
+	boolean customShoppingList = true;
+	String customFoodItem = "apples"; //"brie cheese";
 
 	//print statements on/off
 	boolean printPlayerCoordinates = false;
@@ -83,6 +83,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean printLocationError = false;
 	boolean printCartPosition = false;
 	boolean printAllNormResults = false;
+	boolean printPathPlan = true;
 	DecimalFormat df = new DecimalFormat("##.##");
 
 
@@ -113,8 +114,8 @@ public class Agent extends SupermarketComponentImpl {
 		updateObservation();
 
 		playerIndex = obsv.players.length - 1;
-		System.out.println("We are initialized as Player: " + playerIndex + "\n");
-		System.out.println("\n\nAction List:");
+		System.out.println("\nWe are initialized as Player: " + playerIndex + "\n");
+		System.out.println("\nAction List:");
 		System.out.println(actionList + "\n");
 
 		if (!customShoppingList) {
@@ -128,8 +129,11 @@ public class Agent extends SupermarketComponentImpl {
 		for(int i=0; i<shoppingListLength; i++){
 			System.out.println(
 			String.valueOf(obsv.players[playerIndex].list_quant[i]) + " - " + 
-			obsv.players[playerIndex].shopping_list[i]);
+			obsv.players[playerIndex].shopping_list[i] + "\n");
 		}
+
+		setGoalLocation();
+		buildPathPlan(); //Build Plan to grab cart
 		// TODO: Generate queue for finding cart 
 		setupDone = true;
 	}
@@ -260,14 +264,14 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// SECONDARY FUNCTIONS ///////////
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
+		System.out.println("Building Path Plan");
 		pathGoalList = new ArrayList<String>();
 		pathGoalList.add("Current Location");
-		double tempArray[] = obsv.players[playerIndex].position; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
+		double tempArray[] = playerCoordinates; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
 		pathGoalCoordinates = new ArrayList<double[]>();
 		pathGoalCoordinates.add(tempArray);
-		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, tempArray);
-
-		while(currentPlanLocation != "Final Goal Location"){
+		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, playerCoordinates);
+		while(currentPlanLocation != "Goal Location"){
 			switch (currentPlanLocation) {
 				case ("Wrong Aisle"): //update X
 					int hub = whichHubToUse();
@@ -282,21 +286,29 @@ public class Agent extends SupermarketComponentImpl {
 						pathGoalCoordinates.add(tempArray);
 					}
 					currentPlanLocation = "Aisle Hub";
+					break;
 
 				case ("Aisle Hub"): //update Y
-					int aisleIndex = getAisleIndex(goalCoordinates);
-					pathGoalList.add("Aisle " + getAisleIndex(goalCoordinates));
-					//tempArray[0] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[0];
-					tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
+					if (currentAction == "Finding Carts") tempArray[1] = 17;
+					else if (currentAction == "Checking Out" || currentAction == "Exiting") tempArray[1] = 7.5;
+					else if (currentAction == "Shopping"){
+						int aisleIndex = getAisleIndex(adjustedGoalCoordinates);
+						System.out.println("Goal Coordinates for Food item: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
+						pathGoalList.add("Aisle " + aisleIndex);
+						//tempArray[0] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[0];
+						tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
+					}
 					pathGoalCoordinates.add(tempArray);
 					currentPlanLocation = "Correct Aisle";
+					break;
 
 				case ("Correct Aisle"): //update X
 					pathGoalList.add("Goal Location");
-					currentPlanLocation = "Final Goal Location";
+					currentPlanLocation = "Goal Location";
 					tempArray [0] = adjustedGoalCoordinates[0];
 					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
 					pathGoalCoordinates.add(tempArray);
+					break;
 
 				case ("Front of Store"): //update X
 					pathGoalList.add("Aisle Hub 1");
@@ -304,7 +316,7 @@ public class Agent extends SupermarketComponentImpl {
 					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
 					pathGoalCoordinates.add(tempArray); 
 					currentPlanLocation = "Aisle Hub";
-
+					break;
 
 				case ("Back of Store"): //update X
 					pathGoalList.add("Aisle Hub 2");
@@ -312,8 +324,15 @@ public class Agent extends SupermarketComponentImpl {
 					//tempArray[1] = pathGoalCoordinates.get(pathGoalCoordinates.size()-1)[1];
 					pathGoalCoordinates.add(tempArray);
 					currentPlanLocation = "Aisle Hub";
+					break;
 			}
 		}
+		if(printPathPlan) System.out.println("Path List: " + pathGoalList);
+		System.out.println("Path Coordinates List:");
+		for(double paths[] : pathGoalCoordinates){
+			System.out.println(paths[0] + ", " + paths[1]);
+		}
+		sleep(1000);
 	}
 
 	public void updateActionQueue(int actualMoveDirection) {
@@ -360,15 +379,17 @@ public class Agent extends SupermarketComponentImpl {
 
 		int goalAisle = getAisleIndex(goalCoordinates);
 		int currentAisle = getAisleIndex(currentCoordinates);
+		System.out.println("Goal Coordinates: " + xGoal + ", " + yGoal);
+		System.out.println("Goal Aisle: " + goalAisle + "  Current Aisle: " + currentAisle);
 		if (currentAisle >= 1 && currentAisle <= 6)
 			if (goalAisle == currentAisle) return "Correct Aisle";
 			else return "Wrong Aisle";
 		else if (currentAisle == 8 || currentAisle==9) return "Aisle Hub";
 		else if (currentAisle == 7) return "Front of Store";
 		else if (currentAisle == 10) return "Back of Store"; 
-		return "Error Detirmining Relative Location";
+		else return "Error Detirmining Relative Location";
 	}
-	
+
 	public int get_direction_from_goal_list() {
 		int direction = 6;
 		switch (pathGoalList.get(0)) { // TODO: cases redundant? need refactor
@@ -418,15 +439,19 @@ public class Agent extends SupermarketComponentImpl {
 		// 1-6  = Aisles top->bottom, 7 = front of store, 8 = Front Hub, 9 = Back Hub, 10 = Back of Store
 		double xPos = coordinates[0];
 		double yPos = coordinates[1];
-		if (xPos > 5.5 && xPos < 14.5) //in an aisle
-			for (int i = 1; i <= 6; i++) 
-				if (obsv.inAisle(playerIndex, i)) return i;
+		//System.out.println("Coordinates: " + xPos + ", " + yPos);
+		if (xPos >= 5.5 && xPos <= 14.5){ //in an aisle
+			for (int i = 1; i <= 6; i++) {
+				double aisleTop = 0.5 + 4.*(i - 1);
+       			double aisleBottom = 0.5 + 4.*i;
+				if (yPos >= aisleTop && yPos <=aisleBottom) return i;
+			}
+		}
 		else if(xPos <= 3.75) return 7;
 		else if(obsv.inAisleHub(playerIndex)) return 8;
 		else if(obsv.inRearAisleHub(playerIndex)) return 9;
 		else if(xPos >= 16.5) return 10;
-
-		System.out.println("Get Aisle Index Failed");
+		else System.out.println("Get Aisle Index Failed");
 		return 0;
 	}
 
@@ -444,6 +469,7 @@ public class Agent extends SupermarketComponentImpl {
 					currentSubAction = "findCarts";
 					break;
 				case "Shopping":
+					findFoodCoordinates();
 					break; //see if statement below
 				case "Checking Out":
 					findRegisterCoordinates();
@@ -468,9 +494,9 @@ public class Agent extends SupermarketComponentImpl {
 		double yCounterAdjust = 2.5;
 		double xShelfAdjust = -1.0;
 		double xCounterAdjust = 1.5;
-		String desiredFoodItem;
-		uniqueItemsInCart = obsv.carts[0].contents_quant.length;
-
+		String desiredFoodItem = "";
+		//uniqueItemsInCart = obsv.carts[0].contents_quant.length;
+		uniqueItemsInCart = 0;
 		if	(shoppingListLength > uniqueItemsInCart){ //if there are food items left on list
 			// For Live cases
 			if(!customShoppingList) {
@@ -510,7 +536,7 @@ public class Agent extends SupermarketComponentImpl {
 					}
 					//else System.out.println(obsv.counters[i].food + " does not equal " + goalLocation);
 				}
-
+				System.out.println("Could not find food item: " + goalLocation);
 			}
 		}
 		else actionList.remove(0);

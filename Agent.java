@@ -24,6 +24,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	// variables
 	int playerIndex;
+	int cartIndex;
 	int idealMoveDirection; //0=N, 1=S, 2=E, 3=W, 4=interact, 5=toggleCart, otherwise=null
 	int actualMoveDirection;
 	int count = 0;
@@ -47,6 +48,7 @@ public class Agent extends SupermarketComponentImpl {
 	boolean counterItem = false;
 	boolean usingAlternatePath = false;
 	boolean playerCollisionNormViolated = false;
+	boolean shopliftingNormChecked = false;
 
 	// position constants
 	double yShoppingAdjust = 2.5;
@@ -65,8 +67,8 @@ public class Agent extends SupermarketComponentImpl {
 	boolean hasGoal = false;
 	String currentSubAction = "";
 	ArrayList<Integer> subActionList;
-	int cartIndex = 0;
-	boolean[][] possibleMoveDirections = new boolean[4][7]; //4 rows for 4 unique norms
+	int numOfNorms = 6; // total number of norms
+	boolean[][] possibleMoveDirections = new boolean[numOfNorms][7]; //each rows for one unique norm
 	int tempMoveDirection = 6;
 	int[] checkOutCancelationThreshold = {3, 3};
 	int[] counterCancelationThreshold = {17, 18};
@@ -113,6 +115,7 @@ public class Agent extends SupermarketComponentImpl {
 		updateObservation();
 
 		playerIndex = obsv.players.length - 1;
+		cartIndex = obsv.players[playerIndex].curr_cart;
 		System.out.println("We are initialized as Player: " + playerIndex + "\n");
 		System.out.println("\n\nAction List:");
 		System.out.println(actionList + "\n");
@@ -161,6 +164,7 @@ public class Agent extends SupermarketComponentImpl {
 				case "Checking Out":
 					actionList.remove(0);
 					// generate exit queue
+					shopliftingNormChecked = false;
 					break;
 				case "Exiting": // should never be reached
 					break; 
@@ -183,6 +187,7 @@ public class Agent extends SupermarketComponentImpl {
 
 		// norms for interaction
 		cartTheftNorm();
+		shopliftingNorm();
 
 		// Finally check if interaction is canceled
 		interactionCancellationNorm();
@@ -211,7 +216,7 @@ public class Agent extends SupermarketComponentImpl {
 		} else {
 			System.out.println("ideal direction " + idealMoveDirection + " breaks norm");
 			if (idealMoveDirection < 3 && idealMoveDirection > -1)
-				return find_actual_navigation_direction();
+				return find_actual_navigation_direction(summedPossibleMoveDirections);
 			else {
 				System.out.println("No actions are allowed at the moment");
 				return 6;
@@ -219,7 +224,7 @@ public class Agent extends SupermarketComponentImpl {
 		}
 	}
 
-	public int find_actual_navigation_direction () {
+	public int find_actual_navigation_direction (boolean[] summedPossibleMoveDirections) {
 		if (actionList.get(0) == "Shopping" &&
 			pathGoalList.get(0) == "Aisle" && playerCollisionNormViolated) {
 			// generate new queue to walk around, args?
@@ -574,14 +579,40 @@ public class Agent extends SupermarketComponentImpl {
 		return;
 	}
 
+	// check if the next interaction will toggle other's cart
+	// This will happen only when other left thier cart between our agent and the cart
+	// So we wait for other to leave, and try agin in the next loop
 	public void cartTheftNorm() {
 		int normIndex = 4;
 		for (int i = 0; i < obsv.carts.length; i++) {
-			if (!obsv.carts[i].owner == playerIndex) {
+			if (obsv.carts[i].owner != playerIndex) {
 				if(obsv.carts[i].canInteract(obsv.players[playerIndex])) {
 					possibleMoveDirections[normIndex][5] = false;
 					return;
 				}
+			}
+		}
+	}
+
+	// check if exiting with unpaid item
+	// if yes, add "Checking Out" to actionList to check out again
+	public void shopliftingNorm() {
+		int normIndex = 5;
+		if (!shopliftingNormChecked && actionList.get(0) == "Exiting") {
+			int cartItemQuant = 0, purchasedCartItemQuant = 0;
+			for (int i = 0; i < obsv.carts[cartIndex].contents_quant.length; i++) {
+				cartItemQuant += obsv.carts[cartIndex].contents_quant[i];
+			}
+			for (int i = 0; i < obsv.carts[cartIndex].purchased_quant.length; i++) {
+				purchasedCartItemQuant += obsv.carts[cartIndex].purchased_quant[i];
+			}
+			if (purchasedCartItemQuant < cartItemQuant) { // if there are unpaid items
+				actionList.add(0, "Checking Out"); // go back to state "Checking out"
+				// re-generate checkout queue
+				for (int i = 0; i < 4; i++) // Set all possible direction to false, and start to check out in next loop
+					possibleMoveDirections[normIndex][i] = false;
+			} else {
+				shopliftingNormChecked = true;
 			}
 		}
 	}

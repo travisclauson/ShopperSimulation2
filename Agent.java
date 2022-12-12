@@ -36,7 +36,7 @@ public class Agent extends SupermarketComponentImpl {
 	int uniqueItemsInCart = 0;
 	int numOfUniqueItemLeft = 0;
 	ArrayList<String> actionList = new ArrayList<String>(
-            Arrays.asList("Shopping", "Checking Out", "Exiting"));
+            Arrays.asList("Finding Carts", "Shopping", "Checking Out", "Exiting"));
 	ArrayList <String> pathGoalList;
 	ArrayList <double[]> pathGoalCoordinates;
 	String currentPlanLocation = "";
@@ -97,12 +97,13 @@ public class Agent extends SupermarketComponentImpl {
 
 		//DECIDE - where is the next goal, how do we get there, set moveDirection
 		idealMoveDirection = decideIdealAction();
-		checkNorms();
-		actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
-
+		// System.out.println(playerCoordinates[1]);
+		// checkNorms();
+		// actualMoveDirection = decideActualAction(); //based on allowed decisions from norms
+		actualMoveDirection = idealMoveDirection;
 		// aupdate action queue
 		updateActionQueue(actualMoveDirection);
-
+	
 		//MOVE - move based on moveDirection
 		act(actualMoveDirection);
 		count+=1;
@@ -148,23 +149,21 @@ public class Agent extends SupermarketComponentImpl {
 				case "Finding Carts": // reached when finished finding cart 
 					actionList.remove(0);
 					if (numOfUniqueItemLeft > 0) {
-						//generate food action queue for the 1st item
-					} else { // when shopping list is empty
-						// generate exit queue
-					} 
+						buildPathPlan();
+					}
 					break;
 				case "Shopping": 
 					numOfUniqueItemLeft--;
 					if (numOfUniqueItemLeft > 0) {
-						//generate food action queue
+						buildPathPlan();
 					} else {
 						actionList.remove(0);
-						// generate checkout queue
+						buildPathPlan();
 					}
 					break;
 				case "Checking Out":
 					actionList.remove(0);
-					// generate exit queue
+					buildPathPlan();
 					break;
 				case "Exiting": // should never be reached
 					break; 
@@ -264,66 +263,87 @@ public class Agent extends SupermarketComponentImpl {
 	/////////// SECONDARY FUNCTIONS ///////////
 
 	public void buildPathPlan() { //I realized my logic is designed for food items, not sure how to adjust for Carts, Counters, Registers
+		String currAction = actionList.get(0);
 		System.out.println("Building Path Plan");
 		pathGoalList = new ArrayList<String>();
-		pathGoalList.add("Current Location");
+		// pathGoalList.add("Current Location");
 		double tempArray[] = playerCoordinates; //since I cannot figure out how to manually add an array to arrayList ... arrayList.add({1.0,2.0}); won't work
 		pathGoalCoordinates = new ArrayList<double[]>();
-		pathGoalCoordinates.add(tempArray);
+		// pathGoalCoordinates.add(tempArray);
 		String currentPlanLocation = detirmineRelativeLocation(adjustedGoalCoordinates, playerCoordinates);
 		while(currentPlanLocation != "Goal Location"){
 			int listLength = pathGoalCoordinates.size();
 			switch (currentPlanLocation) {
 				case ("Wrong Aisle"): //update X
 					int hub = whichHubToUse();
-					pathGoalList.add("Aisle Hub " + hub);
+					pathGoalList.add("Aisle Hub"); //  + hub
 					if (hub == 1){
 						tempArray[0] = 4.25;//4.25 is the middle of the front hub, then use the last Y value set since just walking north/south
-						pathGoalCoordinates.add(tempArray); 
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]}); 
 					} else {
 						tempArray[0] = 16.25; //16.25 is the middle of the rear hub
-						pathGoalCoordinates.add(tempArray);
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
 					}
 					currentPlanLocation = "Aisle Hub";
 					break;
 
 				case ("Aisle Hub"): //update Y
-					if (currentAction == "Finding Carts") tempArray[1] = 17;
-					else if (currentAction == "Checking Out" || currentAction == "Exiting") tempArray[1] = 7.5;
+					if (currentAction == "Finding Carts") {
+						tempArray[1] = 17;
+						pathGoalList.add("Goal Vertical");
+					}
+					else if (currentAction == "Checking Out" || currentAction == "Exiting") {
+						tempArray[1] = 7.5;
+						pathGoalList.add("Goal Vertical");
+					}
 					else if (currentAction == "Shopping"){
 						int aisleIndex = getAisleIndex(adjustedGoalCoordinates);
 						//System.out.println("Goal Coordinates for Food item: " + goalCoordinates[0] + ", " + goalCoordinates[1]);
-						pathGoalList.add("Aisle " + aisleIndex);
+						pathGoalList.add("Aisle");// + aisleIndex);
 						tempArray[1] = 4*aisleIndex-2.5; //should be the recipe for middle of the aisle
 					}
-					pathGoalCoordinates.add(tempArray);
+					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
 					currentPlanLocation = "Correct Aisle";
 					break;
 
 				case ("Correct Aisle"): //update X
-					pathGoalList.add("Goal Location");
+					if (currAction == "Finding Carts") {
+						tempArray[0] = 1;
+						pathGoalList.add("Goal Horizontal");
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]}); 
+						tempArray[1] = 17.75;
+						pathGoalList.add("Goal Vertical");
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]}); 
+						pathGoalList.add("Interact");
+						pathGoalCoordinates.add(new double[] {0, 0}); 
+						pathGoalList.add("Interact");
+						pathGoalCoordinates.add(new double[] {0, 0}); 
+					} else {
+						pathGoalList.add("Goal Location");
+						tempArray[0] = adjustedGoalCoordinates[0];
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+					}
 					currentPlanLocation = "Goal Location";
-					tempArray [0] = adjustedGoalCoordinates[0];
-					pathGoalCoordinates.add(tempArray);
 					break;
 
 				case ("Front of Store"): //update X
-					pathGoalList.add("Aisle Hub 1");
+					pathGoalList.add("Aisle Hub"); // 1
 					tempArray[0] = 4.25;
-					pathGoalCoordinates.add(tempArray); 
+					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]}); 
 					currentPlanLocation = "Aisle Hub";
 					break;
 
 				case ("Back of Store"): //update X
-					pathGoalList.add("Aisle Hub 2");
+					pathGoalList.add("Aisle Hub"); // 2
 					tempArray[0] = 16.25;
-					pathGoalCoordinates.add(tempArray);
+					// new int[]{ 1,2,3,4,5,6,7,8,9,10 }
+					pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
 					currentPlanLocation = "Aisle Hub";
 					break;
 			}
-			System.out.println("Path Coordinates List:");
-			for(double paths[]: pathGoalCoordinates)
-				System.out.println(paths[0] + ", " + paths[1]);
+			// System.out.println("Path Coordinates List:");
+			// for(double paths[]: pathGoalCoordinates)
+			// 	System.out.println(paths[0] + ", " + paths[1]);
 		}
 		System.out.println("path goal coordinates: " + pathGoalCoordinates.get(0)[0] + ", " + pathGoalCoordinates.get(0)[1]);
 		if(printPathPlan) System.out.println("Path List: " + pathGoalList);
@@ -345,6 +365,7 @@ public class Agent extends SupermarketComponentImpl {
 						(actualMoveDirection == 1 && nextLocation[1] >= pathGoalCoordinates.get(0)[1])) {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+						System.out.println("Reached Aisle");
 					}
 					break;
 				case "Aisle Hub":
@@ -352,6 +373,7 @@ public class Agent extends SupermarketComponentImpl {
 						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+						System.out.println("Reached Aisle Hub");
 					}
 					break;
 				case "Goal Location": // only need this case?
@@ -361,7 +383,30 @@ public class Agent extends SupermarketComponentImpl {
 						(actualMoveDirection == 3 && nextLocation[0] <= pathGoalCoordinates.get(0)[0])) {
 						pathGoalList.remove(0);
 						pathGoalCoordinates.remove(0);
+						System.out.println("Reached Goal Location");
 					}
+					break;
+				case "Goal Vertical": 
+					if ((actualMoveDirection == 0 && playerCoordinates[1] <= pathGoalCoordinates.get(0)[1] + oneStep) ||
+						(actualMoveDirection == 1 && playerCoordinates[1] >= pathGoalCoordinates.get(0)[1] - oneStep)) {
+						pathGoalList.remove(0);
+						pathGoalCoordinates.remove(0);
+						// System.out.println("Reached Goal Vertical");
+					}
+					// System.out.println(actualMoveDirection);
+					break;	
+				case "Goal Horizontal": 
+					if ((actualMoveDirection == 3 && playerCoordinates[0] <= pathGoalCoordinates.get(0)[0] + oneStep) ||
+						(actualMoveDirection == 2 && playerCoordinates[0] >= pathGoalCoordinates.get(0)[0] - oneStep)) {
+						pathGoalList.remove(0);
+						pathGoalCoordinates.remove(0);
+						System.out.println("Reached Goal Horizontal");
+						// System.out.print("playerCoordinates[1]: ");
+						// System.out.println(playerCoordinates[1]);
+						// System.out.print("playerCoordinates[1]: ");
+						// System.out.println(playerCoordinates[1]);
+					}
+					System.out.println(actualMoveDirection);
 					break;
 				default:
 					break;
@@ -392,24 +437,30 @@ public class Agent extends SupermarketComponentImpl {
 			case "Aisle": 
 				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
 				else direction = 0;
+				System.out.println("Aisle");
 				break;
 			case "Aisle Hub":
 				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
+				System.out.println("Aisle Hub");
 				break;
-			case "Goal Location Horizontal":
+			case "Goal Horizontal":
 				if (pathGoalCoordinates.get(0)[0] > playerCoordinates[0]) direction = 2;
 				else direction = 3;
+				System.out.println(" Goal Horizontal");
 				break;
-			case "Goal Location Vertical":
-				if (pathGoalCoordinates.get(0)[1] > playerCoordinates[1]) direction = 1;
+			case "Goal Vertical":
+				if (pathGoalCoordinates.get(0)[1] >= playerCoordinates[1]) direction = 1;
 				else direction = 0;
+				System.out.println(" Goal Vertical");
 				break;
-			case "interact":
+			case "Interact":
 				direction = 4;
+				System.out.println("Interact");
 				break;
-			case "toggle":
+			case "Toggle":
 				direction = 5;
+				System.out.println("Toggle");
 				break;
 			default:
 				direction = 6;

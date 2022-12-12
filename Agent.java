@@ -171,8 +171,9 @@ public class Agent extends SupermarketComponentImpl {
 						System.out.println("get another food");
 					} else {
 						actionList.remove(0);
-						buildPathPlan();
 						System.out.println("go to check out");
+						findRegisterCoordinates();
+						buildPathPlan();
 					}
 					break;
 				case "Checking Out":
@@ -309,8 +310,8 @@ public class Agent extends SupermarketComponentImpl {
 					if (actionList.get(0) == "Finding Carts") {
 						tempArray[1] = 17;
 						pathGoalList.add("Goal Vertical");
-					} else if (actionList.get(0) == "Checking Out" || actionList.get(0) == "Exiting") {
-						tempArray[1] = 7.5;
+					} else if (actionList.get(0) == "Checking Out") { // || actionList.get(0) == "Exiting") {
+						tempArray[1] = adjustedGoalCoordinates[1];
 						pathGoalList.add("Goal Vertical");
 					} else if (actionList.get(0) == "Shopping") { // Queue for shop for an item
 						findFoodCoordinates();
@@ -378,7 +379,43 @@ public class Agent extends SupermarketComponentImpl {
 						pathGoalCoordinates.add(new double[] {0, 0}); 
 						pathGoalList.add("Interact");
 						pathGoalCoordinates.add(new double[] {0, 0}); 
-					} else {
+					} else if (currAction == "Checking Out") {
+						tempArray[0] = adjustedGoalCoordinates[0];
+						pathGoalList.add("Goal Horizontal");
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Toggle"); // drop cart
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("checkFacingDirection");
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Goal Vertical"); // go to shelf
+						tempArray[1] = tempArray[1] - 1.5;
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Interact"); // pick up item
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Interact"); // pick up item
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Goal Vertical"); // go to cart
+						tempArray[1] = tempArray[1] + 1.5;
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("turnToFaceCart"); // face cart
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						pathGoalList.add("Toggle"); // put item
+						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+
+						// tempArray[0] = exitX;
+						// pathGoalList.add("Goal Horizontal");
+						// pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
+						// currentPlanLocation = "Goal Location";
+						
+					} else if (currAction == "Shopping"){
 						pathGoalList.add("Goal Location");
 						tempArray[0] = adjustedGoalCoordinates[0];
 						pathGoalCoordinates.add(new double[] {tempArray[0], tempArray[1]});
@@ -683,7 +720,7 @@ public class Agent extends SupermarketComponentImpl {
 
 	public void findRegisterCoordinates () {
 		goalLocation = "Register";
-		goalCoordinates = obsv.registers[0].position;
+		goalCoordinates = obsv.registers[1].position;
 		adjustedGoalCoordinates[0] = goalCoordinates[0];
 		adjustedGoalCoordinates[1] = goalCoordinates[1] + 3.25;
 		System.out.println("Register: " + goalCoordinates[0] + ", " + goalCoordinates[1]);

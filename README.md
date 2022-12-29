@@ -1,4 +1,7 @@
 # ShopperSimulation2
+
+![What is this](simulationPhoto.png)
+
 Authors: Travis Clauson, Lidi Yafei, Matthias Scheutz, Tufts CS Department
 
 Submission Date: 11/28/2022
